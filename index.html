@@ -42,6 +42,7 @@
     <div class="topbar-right">
       <div id="tb-gold" class="tb-gold">🪙 0</div>
       <div id="tb-stone" class="tb-stone">💎 0</div>
+      <div id="tb-gem" class="tb-gem">💠 0</div>
       <button id="btn-reset" class="btn btn-tiny btn-dark" title="저장 데이터 초기화">초기화</button>
     </div>
   </header>
@@ -53,6 +54,8 @@
     <button class="tab" data-tab="skills">✨ 스킬</button>
     <button class="tab" data-tab="inventory">🎒 가방</button>
     <button class="tab" data-tab="forge">⚒️ 대장간</button>
+    <button class="tab" data-tab="gacha">🎰 뽑기</button>
+    <button class="tab" data-tab="collection">📚 컬렉션</button>
     <button class="tab" data-tab="shop">🏪 상점</button>
   </nav>
 
@@ -62,6 +65,8 @@
     <section id="tab-skills" class="tab-panel hidden"></section>
     <section id="tab-inventory" class="tab-panel hidden"></section>
     <section id="tab-forge" class="tab-panel hidden"></section>
+    <section id="tab-gacha" class="tab-panel hidden"></section>
+    <section id="tab-collection" class="tab-panel hidden"></section>
     <section id="tab-shop" class="tab-panel hidden"></section>
   </main>
 </div>
@@ -70,6 +75,7 @@
 <div id="screen-battle" class="screen hidden">
   <div id="battle-stage">
     <div id="stage-bg"></div>
+    <div id="stage-particles"></div>
     <div id="stage-ground"></div>
 
     <!-- 아군 -->
@@ -126,6 +132,14 @@
 <!-- 범용 모달 (아이템 상세 등) -->
 <div id="modal-generic" class="modal hidden">
   <div class="modal-box" id="modal-generic-box"></div>
+</div>
+
+<!-- 가챠 소환 연출 오버레이 -->
+<div id="gacha-overlay" class="hidden">
+  <div id="gacha-circle"></div>
+  <div id="gacha-pillar"></div>
+  <div id="gacha-cards"></div>
+  <button id="gacha-close" class="btn btn-gold hidden">확인</button>
 </div>
 
 <div id="toast-layer"></div>

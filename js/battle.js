@@ -5,7 +5,7 @@
 
 const Battle = {
   active: false,
-  zone: null,
+  mode: null,     // { type: 'zone'|'tower'|'daily', zoneId?, floor?, dungeonId? }
   monster: null,
   player: null,   // 전투용 플레이어 유닛 (스탯 스냅샷 + 상태)
   busy: false,
@@ -13,10 +13,26 @@ const Battle = {
 
   sleep(ms) { return new Promise(r => setTimeout(r, ms)); },
 
-  /* ══════════ 전투 시작 ══════════ */
-  start(zoneId) {
-    this.zone = DATA.zones.find(z => z.id === zoneId);
-    this.monster = Game.spawnMonster(zoneId);
+  /* ══════════ 전투 시작 ══════════
+     mode: {type:'zone', zoneId} | {type:'tower', floor} | {type:'daily', dungeonId} */
+  start(mode) {
+    if (typeof mode === 'string') mode = { type: 'zone', zoneId: mode };
+    this.mode = mode;
+
+    let bgClass, particleClass = '';
+    if (mode.type === 'zone') {
+      const zone = DATA.zones.find(z => z.id === mode.zoneId);
+      this.monster = Game.spawnMonster(mode.zoneId);
+      bgClass = zone.bg; particleClass = zone.particle || '';
+    } else if (mode.type === 'tower') {
+      this.monster = Game.spawnTowerMonster(mode.floor);
+      bgClass = 'zone-tower'; particleClass = 'pt-star';
+    } else { // daily
+      const d = DATA.dailyDungeons.find(x => x.id === mode.dungeonId);
+      Game.useDailyRun(mode.dungeonId);
+      this.monster = Game.spawnDailyMonster(mode.dungeonId);
+      bgClass = d.bg; particleClass = 'pt-star';
+    }
     const t = Game.totalStats();
     const mods = Game.passiveMods();
     const cls = DATA.classes[Game.state.classId];
@@ -42,13 +58,32 @@ const Battle = {
     this.busy = false;
 
     UI.showScreen('battle');
-    document.getElementById('stage-bg').className = this.zone.bg;
+    document.getElementById('stage-bg').className = bgClass;
+    this.setParticles(particleClass);
     document.getElementById('battle-log').innerHTML = '';
     this.drawSprites();
     this.renderAll();
-    this.log(`⚔️ ${m.boss ? '👑 ' : ''}${m.name} Lv.${m.level} 이(가) 나타났다!`, 'sys');
+    if (mode.type === 'tower') this.log(`🗼 무한의 탑 ${mode.floor}층`, 'gold');
+    this.log(`⚔️ ${m.boss ? '👑 ' : m.miniBoss ? '🔶 ' : ''}${m.name} Lv.${m.level} 이(가) 나타났다!`, 'sys');
     if (m.golden) this.log('✨ 황금 슬라임! 놓치면 후회한다!', 'gold');
-    this.banner(`BATTLE START`);
+    this.banner(mode.type === 'tower' ? `${mode.floor}F` : 'BATTLE START');
+  },
+
+  /* 지역별 파티클 생성 */
+  setParticles(cls) {
+    const layer = document.getElementById('stage-particles');
+    layer.innerHTML = '';
+    layer.className = cls || '';
+    if (!cls) return;
+    for (let i = 0; i < 14; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Game.rand(0, 100) + '%';
+      p.style.animationDelay = (Math.random() * 8).toFixed(2) + 's';
+      p.style.animationDuration = (5 + Math.random() * 7).toFixed(2) + 's';
+      p.style.setProperty('--drift', Game.rand(-60, 60) + 'px');
+      layer.appendChild(p);
+    }
   },
 
   /* ══════════ 스프라이트 ══════════ */
@@ -56,7 +91,7 @@ const Battle = {
     const pc = document.getElementById('sprite-player');
     const mc = document.getElementById('sprite-monster');
     Sprites.draw(pc, Game.state.classId, { pose });
-    Sprites.draw(mc, 'slime', { tint: this.monster.tint, flip: true, scale: this.monster.scale >= 1.5 ? 1 : 0.82 });
+    Sprites.draw(mc, this.monster.kind, { tint: this.monster.tint, flip: true, scale: this.monster.scale >= 1.5 ? 1 : 0.82 });
     pc.className = 'idle';
     mc.className = 'idle';
   },
@@ -369,16 +404,30 @@ const Battle = {
     await this.sleep(900);
 
     Game.state.kills++;
+    const firstKill = Game.recordKill(m);
     const rewards = Game.monsterRewards(m);
     const goldGot = Game.gainGold(rewards.gold);
+    if (rewards.gems > 0) Game.state.gems += rewards.gems;
     const levelsGained = Game.gainExp(rewards.exp);
+
+    // 탑 기록 갱신
+    let towerLine = '';
+    if (this.mode.type === 'tower') {
+      if (this.mode.floor > Game.state.bestFloor) {
+        Game.state.bestFloor = this.mode.floor;
+        towerLine = `<div style="color:var(--gold)">🗼 최고 기록 갱신! ${this.mode.floor}층 돌파!</div>`;
+      } else {
+        towerLine = `<div class="drop-line">🗼 ${this.mode.floor}층 클리어 (최고 ${Game.state.bestFloor}층)</div>`;
+      }
+    }
 
     const dropLines = [];
     for (const d of rewards.drops) {
       if (d.type === 'equip') {
-        Game.state.inventory.push(d.item);
+        Game.addItem(d.item);
         const r = DATA.rarities.find(x => x.id === d.item.rarity);
-        dropLines.push(`<span class="rc-${d.item.rarity}">${d.item.icon} [${r.name}] ${d.item.name}</span>`);
+        const shiny = (d.item.rarity === 'epic' || d.item.rarity === 'legend') ? ' drop-shiny' : '';
+        dropLines.push(`<span class="rc-${d.item.rarity}${shiny}">${d.item.icon} [${r.name}] ${d.item.name}</span>`);
       } else if (d.type === 'potion_hp') { Game.state.potions.hp++; dropLines.push('🧪 HP 물약'); }
       else if (d.type === 'potion_mp') { Game.state.potions.mp++; dropLines.push('🔮 MP 물약'); }
       else if (d.type === 'stone') { Game.state.stones += d.count; dropLines.push(`💎 강화석 ×${d.count}`); }
@@ -389,9 +438,11 @@ const Battle = {
     Game.state.curMp = this.player.mp;
     Game.save();
 
-    let body = `
+    let body = towerLine + `
       <div>✨ 경험치 <b>+${rewards.exp}</b></div>
       <div class="log-gold">🪙 골드 <b>+${goldGot}</b></div>`;
+    if (rewards.gems > 0) body += `<div style="color:var(--mp)">💠 다이아 <b>+${rewards.gems}</b></div>`;
+    if (firstKill) body += `<div style="color:var(--green)">📚 도감 신규 등록! 💠 +5</div>`;
     if (levelsGained.length) {
       body += `<div style="color:var(--exp)">🎉 레벨 업! Lv.${levelsGained[levelsGained.length - 1]} 달성! (스킬 포인트 +${levelsGained.length})</div>`;
     }
@@ -401,6 +452,8 @@ const Battle = {
     } else {
       body += `<div class="drop-line">📦 전리품 없음</div>`;
     }
+    const claimable = Game.claimableAchievements();
+    if (claimable.length) body += `<div style="color:var(--gold);margin-top:6px">🏅 달성한 업적 ${claimable.length}개 — 컬렉션 탭에서 수령!</div>`;
 
     UI.showResult('🏆 승리!', body, false);
     this.active = false;

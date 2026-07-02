@@ -477,3 +477,204 @@ canvas { image-rendering: pixelated; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-1); }
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+/* ═══════════ v2: 장기 콘텐츠 ═══════════ */
+.tb-gem { color: #6ee0ff; font-size: 12px; }
+
+/* 무한의 탑 배경 */
+#stage-bg.zone-tower { background: linear-gradient(180deg, #060410 0%, #141030 45%, #2b2456 75%, #16123a 100%); }
+
+/* ── 지역 파티클 ── */
+#stage-particles { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.particle {
+  position: absolute; top: -20px; border-radius: 50%;
+  animation: ptFall linear infinite;
+}
+@keyframes ptFall {
+  0% { transform: translate(0, -20px) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: .9; }
+  100% { transform: translate(var(--drift, 0px), 108vh) rotate(320deg); opacity: 0; }
+}
+.pt-leaf .particle { width: 7px; height: 5px; background: #7dd86b; border-radius: 60% 5% 60% 5%; box-shadow: 0 0 4px rgba(125,216,107,.5); }
+.pt-firefly .particle { width: 4px; height: 4px; background: #d8ff7a; box-shadow: 0 0 9px 3px rgba(216,255,122,.65); animation-name: ptFloat; }
+.pt-crystal .particle { width: 5px; height: 8px; background: #b09aff; border-radius: 2px; box-shadow: 0 0 8px rgba(176,154,255,.75); animation-name: ptFloat; }
+.pt-ember .particle { width: 5px; height: 5px; background: #ffab5e; box-shadow: 0 0 8px 2px rgba(255,122,58,.8); animation-name: ptRise; }
+.pt-void .particle { width: 6px; height: 6px; background: #c95eff; box-shadow: 0 0 10px 3px rgba(176,78,240,.7); animation-name: ptFloat; }
+.pt-star .particle { width: 3px; height: 3px; background: #fff; box-shadow: 0 0 7px 2px rgba(160,190,255,.8); animation-name: ptFloat; }
+@keyframes ptFloat {
+  0% { transform: translate(0, 30vh); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: .8; }
+  100% { transform: translate(var(--drift, 20px), 90vh); opacity: 0; }
+}
+@keyframes ptRise {
+  0% { transform: translate(0, 100vh) scale(1); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate(var(--drift, 20px), 20vh) scale(.4); opacity: 0; }
+}
+
+/* ── 마을 특수 카드 (탑/일일) ── */
+.zone-banner.tower-banner { background: linear-gradient(135deg, #141030, #2b2456, #6b5ed8) !important; }
+.daily-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 12px; }
+.runs-left { color: var(--green); }
+.runs-none { color: var(--hp); }
+.login-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border-color: var(--gold-dark) !important;
+  background: linear-gradient(90deg, rgba(240,195,78,.1), transparent) , linear-gradient(180deg, var(--bg-2), var(--bg-1)) !important;
+  margin-bottom: 16px;
+}
+
+/* ── 가챠 탭 ── */
+.gacha-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.gacha-card { text-align: center; padding: 22px 16px; position: relative; overflow: hidden; }
+.gacha-card::before {
+  content: ''; position: absolute; inset: -40%;
+  background: conic-gradient(from 0deg, transparent 70%, rgba(240,195,78,.08), transparent 85%);
+  animation: gachaSpin 7s linear infinite;
+}
+@keyframes gachaSpin { to { transform: rotate(360deg); } }
+.gacha-card > * { position: relative; }
+.gacha-icon { font-size: 46px; margin-bottom: 8px; }
+.gacha-name { font-size: 17px; color: var(--gold); margin-bottom: 6px; }
+.gacha-rates { font-size: 10px; color: var(--text-dim); line-height: 1.7; margin-bottom: 10px; }
+.gacha-pity { font-size: 11px; color: #6ee0ff; margin-bottom: 12px; }
+.gacha-btns { display: flex; gap: 8px; justify-content: center; }
+
+/* ── 가챠 연출 오버레이 ── */
+#gacha-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: radial-gradient(circle at 50% 45%, #1a1030 0%, #05030c 75%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+#gacha-circle {
+  position: absolute; top: 45%; left: 50%; width: 320px; height: 320px;
+  transform: translate(-50%,-50%);
+  border: 3px solid rgba(240,195,78,.55); border-radius: 50%;
+  box-shadow: 0 0 60px rgba(240,195,78,.3), inset 0 0 60px rgba(240,195,78,.15);
+  animation: circleSpin 3s linear infinite, circlePulse 1.4s ease-in-out infinite;
+}
+#gacha-circle::before, #gacha-circle::after {
+  content: ''; position: absolute; inset: 24px;
+  border: 2px dashed rgba(110,224,255,.5); border-radius: 50%;
+  animation: circleSpinRev 5s linear infinite;
+}
+#gacha-circle::after { inset: 54px; border-style: dotted; border-color: rgba(240,195,78,.4); animation-duration: 8s; }
+@keyframes circleSpin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+@keyframes circleSpinRev { to { transform: rotate(-360deg); } }
+@keyframes circlePulse { 0%,100% { box-shadow: 0 0 40px rgba(240,195,78,.25);} 50% { box-shadow: 0 0 90px rgba(240,195,78,.6);} }
+
+#gacha-pillar {
+  position: absolute; top: 0; bottom: 0; left: 50%; width: 130px;
+  transform: translateX(-50%) scaleX(0);
+  background: linear-gradient(90deg, transparent, var(--pillar-color, #fff) 50%, transparent);
+  opacity: .9; filter: blur(2px);
+}
+#gacha-pillar.burst { animation: pillarBurst .8s ease-out forwards; }
+@keyframes pillarBurst {
+  0% { transform: translateX(-50%) scaleX(0); opacity: 0; }
+  30% { transform: translateX(-50%) scaleX(1.4); opacity: 1; }
+  100% { transform: translateX(-50%) scaleX(.25); opacity: .0; }
+}
+
+#gacha-cards {
+  position: relative; z-index: 5;
+  display: grid; grid-template-columns: repeat(5, minmax(90px, 120px));
+  gap: 12px; padding: 20px; max-width: 720px;
+}
+#gacha-cards.single { grid-template-columns: minmax(140px, 180px); }
+.gacha-result-card {
+  aspect-ratio: 3 / 4.2; border-radius: 12px;
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-1));
+  border: 2px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; padding: 8px; text-align: center;
+  opacity: 0; transform: rotateY(90deg) scale(.7);
+  animation: cardFlip .5s forwards ease-out;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes cardFlip {
+  0% { opacity: 0; transform: rotateY(90deg) scale(.7); }
+  60% { opacity: 1; transform: rotateY(-12deg) scale(1.06); }
+  100% { opacity: 1; transform: rotateY(0) scale(1); }
+}
+.gacha-result-card .gr-icon { font-size: 34px; }
+.gacha-result-card .gr-name { font-size: 11px; line-height: 1.4; }
+.gacha-result-card .gr-note { font-size: 10px; color: var(--gold); min-height: 13px; }
+.gacha-result-card.gr-common { border-color: #4a4a5c; }
+.gacha-result-card.gr-uncommon { border-color: #2b7d4a; box-shadow: 0 0 10px rgba(74,222,128,.25); }
+.gacha-result-card.gr-rare { border-color: #2b5a7d; box-shadow: 0 0 14px rgba(78,157,240,.4); }
+.gacha-result-card.gr-epic { border-color: #6a2b7d; box-shadow: 0 0 20px rgba(176,78,240,.55); animation-name: cardFlipEpic; }
+.gacha-result-card.gr-legend {
+  border-color: var(--gold); box-shadow: 0 0 28px rgba(240,195,78,.75);
+  animation-name: cardFlipLegend;
+}
+@keyframes cardFlipEpic {
+  0% { opacity: 0; transform: rotateY(90deg) scale(.7); }
+  55% { opacity: 1; transform: rotateY(-15deg) scale(1.18); }
+  100% { opacity: 1; transform: rotateY(0) scale(1); }
+}
+@keyframes cardFlipLegend {
+  0% { opacity: 0; transform: rotateY(90deg) scale(.6); filter: brightness(3); }
+  50% { opacity: 1; transform: rotateY(-18deg) scale(1.3); filter: brightness(2); }
+  100% { opacity: 1; transform: rotateY(0) scale(1); filter: none; }
+}
+#gacha-close { position: relative; z-index: 6; margin-top: 26px; font-size: 15px; padding: 10px 40px; }
+
+/* ── 펫 / 도감 / 업적 ── */
+.pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.pet-card { text-align: center; cursor: pointer; transition: transform .12s, border-color .12s; position: relative; }
+.pet-card:hover { transform: translateY(-2px); }
+.pet-card.active-pet { border-color: var(--gold) !important; box-shadow: 0 0 16px rgba(240,195,78,.3); }
+.pet-card.locked-pet { opacity: .35; cursor: default; filter: grayscale(.8); }
+.pet-icon { font-size: 38px; margin-bottom: 4px; filter: drop-shadow(0 2px 5px rgba(0,0,0,.6)); }
+.pet-name { font-size: 13px; margin-bottom: 2px; }
+.pet-level { font-size: 10px; color: var(--exp); margin-bottom: 4px; }
+.pet-bonus { font-size: 10px; color: var(--text-dim); line-height: 1.5; }
+.pet-active-tag { position: absolute; top: 8px; right: 10px; font-size: 12px; }
+
+.codex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.codex-card { text-align: center; padding: 10px 6px; }
+.codex-card canvas { width: 64px; height: 64px; }
+.codex-card .cx-name { font-size: 10px; margin-top: 4px; }
+.codex-card .cx-kills { font-size: 9px; color: var(--text-dim); }
+.codex-card.unknown { opacity: .35; }
+.codex-card.unknown canvas { filter: brightness(0) opacity(.6); }
+
+.ach-list { display: flex; flex-direction: column; gap: 8px; }
+.ach-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.ach-row .ach-icon { font-size: 24px; width: 36px; text-align: center; }
+.ach-row .ach-body { flex: 1; }
+.ach-row .ach-name { font-size: 13px; }
+.ach-row .ach-desc { font-size: 11px; color: var(--text-dim); }
+.ach-row .ach-reward { color: #6ee0ff; font-size: 12px; white-space: nowrap; }
+.ach-row.done { border-color: var(--green); }
+.ach-row.claimed { opacity: .45; }
+.ach-claim-btn { animation: achPulse 1.2s ease-in-out infinite; }
+@keyframes achPulse { 0%,100% { box-shadow: 0 0 4px rgba(240,195,78,.3);} 50% { box-shadow: 0 0 16px rgba(240,195,78,.7);} }
+
+/* 환생 */
+.rebirth-card { border-color: var(--exp) !important; margin-top: 18px; }
+.rebirth-card .panel-sub { margin-bottom: 8px; }
+
+/* 드랍 반짝임 */
+@keyframes dropShine { 0%,100% { text-shadow: 0 0 4px currentColor; } 50% { text-shadow: 0 0 14px currentColor; } }
+.drop-shiny { animation: dropShine 1s ease-in-out infinite; }
+
+/* 강화 성공 폭발 */
+@keyframes forgeBurst {
+  0% { transform: translate(-50%,-50%) scale(.3); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(2.2); opacity: 0; }
+}
+.forge-burst {
+  position: fixed; left: 50%; top: 50%; z-index: 250; pointer-events: none;
+  font-size: 60px; animation: forgeBurst .7s forwards ease-out;
+}
+
+/* 뱃지 (탭 알림) */
+.tab-badge {
+  display: inline-block; min-width: 8px; height: 8px; border-radius: 50%;
+  background: var(--hp); margin-left: 4px; vertical-align: super;
+  box-shadow: 0 0 6px rgba(229,72,77,.8);
+}

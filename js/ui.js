@@ -6,7 +6,7 @@ const UI = {
   selectedClass: null,
   forgeTarget: null, // 강화 대상 uid
   currentTab: 'village',
-  lastZone: null,
+  lastMode: null,    // 마지막 전투 모드 (한 번 더 / 다음 층)
 
   /* ══════════ 화면 전환 ══════════ */
   showScreen(name) {
@@ -46,11 +46,9 @@ const UI = {
       wrap.appendChild(card);
       Sprites.draw(card.querySelector('canvas'), cls.id, {});
     }
-    // 기본 선택: 기사
     wrap.firstChild.classList.add('selected');
     this.selectedClass = 'knight';
 
-    // 이어하기 표시
     const notice = document.getElementById('save-notice');
     if (localStorage.getItem(SAVE_KEY)) {
       notice.classList.remove('hidden');
@@ -66,6 +64,11 @@ const UI = {
   enterGame() {
     this.showScreen('game');
     this.renderAll();
+    // 출석 보상 자동 안내
+    Game.checkDaily();
+    if (!Game.state.daily.loginClaimed) {
+      this.toast('🎁 오늘의 출석 보상이 도착했습니다! (마을 탭)');
+    }
   },
 
   /* ══════════ 상단 바 ══════════ */
@@ -76,9 +79,11 @@ const UI = {
     const cls = DATA.classes[s.classId];
     document.getElementById('tb-name').textContent = s.name;
     document.getElementById('tb-class').textContent = `${cls.icon} ${cls.name}`;
-    document.getElementById('tb-level').textContent = `Lv.${s.level}`;
+    document.getElementById('tb-level').textContent =
+      `Lv.${s.level}${s.rebirths > 0 ? ` ♻️${s.rebirths}` : ''}`;
     document.getElementById('tb-gold').textContent = `🪙 ${s.gold.toLocaleString()}`;
     document.getElementById('tb-stone').textContent = `💎 ${s.stones}`;
+    document.getElementById('tb-gem').textContent = `💠 ${s.gems.toLocaleString()}`;
 
     const setBar = (fill, text, cur, max) => {
       document.getElementById(fill).style.width = Math.max(0, Math.min(100, cur / max * 100)) + '%';
@@ -89,6 +94,11 @@ const UI = {
     setBar('tb-exp-fill', 'tb-exp-text', s.exp, DATA.expForLevel(s.level));
 
     Sprites.draw(document.getElementById('portrait'), s.classId, {});
+
+    // 컬렉션 탭 뱃지 (수령 가능 업적)
+    const colTab = document.querySelector('.tab[data-tab="collection"]');
+    const claimable = Game.claimableAchievements().length;
+    colTab.innerHTML = `📚 컬렉션${claimable ? '<span class="tab-badge"></span>' : ''}`;
   },
 
   /* ══════════ 탭 ══════════ */
@@ -106,6 +116,8 @@ const UI = {
       skills: () => this.renderSkills(),
       inventory: () => this.renderInventory(),
       forge: () => this.renderForge(),
+      gacha: () => this.renderGacha(),
+      collection: () => this.renderCollection(),
       shop: () => this.renderShop(),
     }[tab];
     if (fn) fn();
@@ -116,16 +128,28 @@ const UI = {
     this.renderTab(this.currentTab);
   },
 
-  /* ══════════ 마을 (사냥터) ══════════ */
+  /* ══════════ 마을 (사냥터 / 탑 / 일일) ══════════ */
   renderVillage() {
     const el = document.getElementById('tab-village');
     const lv = Game.state.level;
-    let html = `
+    Game.checkDaily();
+
+    /* 출석 보상 */
+    let html = '';
+    if (!Game.state.daily.loginClaimed) {
+      html += `
+        <div class="card login-banner">
+          <div class="zone-info">🎁 <b style="color:var(--gold)">오늘의 출석 보상</b> — 💠 ${DATA.dailyLoginReward.gems} + 🪙 ${DATA.dailyLoginReward.gold}</div>
+          <button id="btn-login-claim" class="btn btn-gold">받기</button>
+        </div>`;
+    }
+
+    html += `
       <div class="panel-title">🏘️ 마을</div>
       <div class="panel-sub">사냥터를 선택해 몬스터를 사냥하세요. 처치 시 경험치·골드·장비를 얻습니다.</div>
       <div class="zone-grid">`;
     for (const z of DATA.zones) {
-      const locked = lv < z.reqLevel;
+      const locked = lv < z.reqLevel && Game.state.rebirths === 0;
       html += `
         <div class="card zone-card ${locked ? 'locked' : ''}" data-zone="${z.id}">
           <div class="zone-banner" style="background:${z.banner}"></div>
@@ -134,22 +158,66 @@ const UI = {
           ${locked ? `<div class="zone-lock">🔒 Lv.${z.reqLevel}</div>` : ''}
         </div>`;
     }
-    html += `</div>
+    /* 무한의 탑 */
+    const nextFloor = Game.state.bestFloor + 1;
+    html += `
+        <div class="card zone-card" id="tower-card">
+          <div class="zone-banner tower-banner"></div>
+          <div class="zone-name">🗼 무한의 탑</div>
+          <div class="zone-info">최고 기록: <b style="color:var(--gold)">${Game.state.bestFloor}층</b><br>
+            층이 오를수록 강해지는 몬스터, 10층마다 보스!<br>💠 다이아를 노려라.</div>
+        </div>
+      </div>`;
+
+    /* 일일 던전 */
+    html += `
+      <div class="panel-title" style="margin-top:22px">📅 일일 던전 <span class="panel-sub" style="display:inline">— 매일 자정 초기화</span></div>
+      <div class="daily-row">`;
+    for (const d of DATA.dailyDungeons) {
+      const left = Game.dailyRunsLeft(d.id);
+      html += `
+        <div class="card zone-card ${left <= 0 ? 'locked' : ''}" data-daily="${d.id}">
+          <div class="zone-name">${d.emoji} ${d.name}</div>
+          <div class="zone-info">${d.desc}<br>
+            남은 횟수: <span class="${left > 0 ? 'runs-left' : 'runs-none'}">${left} / ${d.runsPerDay}</span></div>
+        </div>`;
+    }
+    html += `</div>`;
+
+    html += `
       <div style="margin-top:20px" class="card">
         <div class="zone-info">
           🏕️ <b style="color:var(--text)">여관에서 휴식</b> — 골드 ${20 + Game.state.level * 5} 로 HP/MP를 모두 회복합니다.
           <button id="btn-rest" class="btn btn-tiny btn-gold" style="margin-left:10px">휴식하기</button>
         </div>
         <div class="zone-info" style="margin-top:8px">
-          ⚔️ 처치 ${Game.state.kills} · 💀 사망 ${Game.state.deaths}
+          ⚔️ 처치 ${Game.state.kills.toLocaleString()} · 💀 사망 ${Game.state.deaths} · 🗼 최고 ${Game.state.bestFloor}층 · ♻️ 환생 ${Game.state.rebirths}회
         </div>
       </div>`;
     el.innerHTML = html;
 
-    el.querySelectorAll('.zone-card:not(.locked)').forEach(c => {
+    const loginBtn = document.getElementById('btn-login-claim');
+    if (loginBtn) loginBtn.addEventListener('click', () => {
+      const r = Game.claimDailyLogin();
+      if (r) this.toast(`🎁 출석 보상! 💠 ${r.gems} + 🪙 ${r.gold}`);
+      this.renderAll();
+    });
+
+    el.querySelectorAll('.zone-card[data-zone]:not(.locked)').forEach(c => {
       c.addEventListener('click', () => {
-        this.lastZone = c.dataset.zone;
-        Battle.start(c.dataset.zone);
+        this.lastMode = { type: 'zone', zoneId: c.dataset.zone };
+        Battle.start(this.lastMode);
+      });
+    });
+    document.getElementById('tower-card').addEventListener('click', () => {
+      this.lastMode = { type: 'tower', floor: Game.state.bestFloor + 1 };
+      Battle.start(this.lastMode);
+    });
+    el.querySelectorAll('.zone-card[data-daily]:not(.locked)').forEach(c => {
+      c.addEventListener('click', () => {
+        if (Game.dailyRunsLeft(c.dataset.daily) <= 0) return this.toast('오늘 입장 횟수를 모두 사용했습니다!');
+        this.lastMode = { type: 'daily', dungeonId: c.dataset.daily };
+        Battle.start(this.lastMode);
       });
     });
     document.getElementById('btn-rest').addEventListener('click', () => {
@@ -165,7 +233,7 @@ const UI = {
     });
   },
 
-  /* ══════════ 능력치 ══════════ */
+  /* ══════════ 능력치 / 환생 ══════════ */
   renderStats() {
     const el = document.getElementById('tab-stats');
     const t = Game.totalStats();
@@ -178,7 +246,7 @@ const UI = {
     ];
     let html = `
       <div class="panel-title">📜 능력치</div>
-      <div class="panel-sub">기본 능력치 + 장비 + 패시브가 모두 반영된 최종 수치입니다.</div>
+      <div class="panel-sub">기본 능력치 + 장비 + 패시브 + 펫 + 환생 보너스가 모두 반영된 최종 수치입니다.</div>
       <div class="stats-grid">`;
     for (const [name, val, baseVal] of rows) {
       const bonus = (typeof val === 'number' && typeof baseVal === 'number' && val > Math.round(baseVal))
@@ -189,7 +257,32 @@ const UI = {
       <div class="panel-sub" style="margin-top:16px">
         다음 레벨까지 경험치 ${Game.state.exp} / ${DATA.expForLevel(Game.state.level)}
       </div>`;
+
+    /* 환생 */
+    const can = Game.canRebirth();
+    const pts = can ? DATA.rebirth.pointsFor(Game.state.level) : 0;
+    html += `
+      <div class="card rebirth-card">
+        <div class="panel-title" style="font-size:15px">♻️ 환생 <span class="panel-sub" style="display:inline">— Lv.${DATA.rebirth.reqLevel} 이상부터 가능</span></div>
+        <div class="panel-sub">
+          레벨 1로 돌아가는 대신 <b style="color:var(--exp)">환생 포인트</b>를 얻습니다. 포인트당 전 스탯 <b>+${DATA.rebirth.bonusPerPoint}%</b> 영구 증가!<br>
+          장비·펫·패시브·탑 기록은 모두 유지됩니다.<br>
+          현재: 환생 ${Game.state.rebirths}회 · 포인트 ${Game.state.rebirthPts} (전 스탯 +${Game.state.rebirthPts * DATA.rebirth.bonusPerPoint}%)
+          ${can ? `<br><b style="color:var(--gold)">지금 환생하면 +${pts} 포인트!</b>` : ''}
+        </div>
+        <button id="btn-rebirth" class="btn ${can ? 'btn-gold' : 'btn-dark'}" ${can ? '' : 'disabled'}>
+          ${can ? '♻️ 환생하기' : `Lv.${DATA.rebirth.reqLevel} 필요 (현재 Lv.${Game.state.level})`}
+        </button>
+      </div>`;
     el.innerHTML = html;
+
+    const rbBtn = document.getElementById('btn-rebirth');
+    if (rbBtn && can) rbBtn.addEventListener('click', () => {
+      if (!confirm(`환생하면 레벨 1부터 다시 시작합니다.\n환생 포인트 +${pts} (전 스탯 +${pts * DATA.rebirth.bonusPerPoint}%)를 얻습니다.\n진행할까요?`)) return;
+      const r = Game.rebirth();
+      this.toast(`♻️ 환생 완료! 전 스탯 +${r.bonus}% (누적 ${r.total}pt)`);
+      this.renderAll();
+    });
   },
 
   /* ══════════ 스킬 ══════════ */
@@ -373,7 +466,7 @@ const UI = {
 
     el.innerHTML = `
       <div class="panel-title">⚒️ 대장간</div>
-      <div class="panel-sub">강화석과 골드로 장비를 강화합니다. 보유: 🪙 ${s.gold.toLocaleString()} · 💎 ${s.stones}</div>
+      <div class="panel-sub">강화석과 골드로 장비를 강화합니다 (최대 +${DATA.enhanceMax}). 보유: 🪙 ${s.gold.toLocaleString()} · 💎 ${s.stones}</div>
       <div class="forge-layout">
         <div>${targetHtml}</div>
         <div style="max-height:520px;overflow-y:auto">${listHtml}</div>
@@ -393,11 +486,184 @@ const UI = {
       }
       const card = document.getElementById('forge-target-card');
       if (card) { card.classList.remove('forge-flash'); void card.offsetWidth; card.classList.add('forge-flash'); }
+      if (res.success) {
+        const burst = document.createElement('div');
+        burst.className = 'forge-burst';
+        burst.textContent = '✨';
+        document.body.appendChild(burst);
+        setTimeout(() => burst.remove(), 750);
+      }
       this.toast(res.success
         ? `✨ 강화 성공! <b class="enh-tag">+${res.item.enhance}</b> ${res.item.name}`
         : '💥 강화 실패... 재료만 소모되었다.');
       setTimeout(() => { this.renderTopbar(); this.renderForge(); }, 350);
     });
+  },
+
+  /* ══════════ 뽑기 (가챠) ══════════ */
+  renderGacha() {
+    const el = document.getElementById('tab-gacha');
+    const s = Game.state;
+    let html = `
+      <div class="panel-title">🎰 소환의 제단</div>
+      <div class="panel-sub">보유 다이아: <b style="color:#6ee0ff">💠 ${s.gems.toLocaleString()}</b> — 다이아는 탑·보스·업적·도감·출석으로 모읍니다.</div>
+      <div class="gacha-grid">`;
+    for (const [type, conf] of Object.entries(DATA.gacha)) {
+      const rates = conf.rates.map(([r, p]) => {
+        const rr = DATA.rarities.find(x => x.id === r);
+        return `<span class="rc-${r}">${rr.name} ${p}%</span>`;
+      }).join(' · ');
+      const pity = s.pity[type];
+      html += `
+        <div class="card gacha-card">
+          <div class="gacha-icon">${type === 'equip' ? '⚔️' : '🐾'}</div>
+          <div class="gacha-name">${conf.name}</div>
+          <div class="gacha-rates">${rates}<br>10연차: 희귀 이상 1개 보장</div>
+          <div class="gacha-pity">천장까지 ${conf.pity - pity}회 (전설 확정)</div>
+          <div class="gacha-btns">
+            <button class="btn btn-dark btn-pull" data-type="${type}" data-count="1" ${s.gems < conf.cost1 ? 'disabled' : ''}>1회 💠${conf.cost1}</button>
+            <button class="btn btn-gold btn-pull" data-type="${type}" data-count="10" ${s.gems < conf.cost10 ? 'disabled' : ''}>10연차 💠${conf.cost10}</button>
+          </div>
+        </div>`;
+    }
+    html += `</div>
+      <div class="panel-sub" style="margin-top:14px">
+        ⚔️ 장비 소환: 내 레벨에 맞는 장비가 나옵니다. · 🐾 펫 소환: 중복 획득 시 펫이 성장합니다 (최대 Lv.${DATA.petLevelMax}).
+      </div>`;
+    el.innerHTML = html;
+
+    el.querySelectorAll('.btn-pull').forEach(b => b.addEventListener('click', () => {
+      const res = Game.gachaPull(b.dataset.type, parseInt(b.dataset.count));
+      if (!res.ok) return this.toast('다이아가 부족합니다!');
+      this.playGachaAnimation(res.results);
+    }));
+  },
+
+  /* 가챠 연출 */
+  playGachaAnimation(results) {
+    const overlay = document.getElementById('gacha-overlay');
+    const cards = document.getElementById('gacha-cards');
+    const pillar = document.getElementById('gacha-pillar');
+    const closeBtn = document.getElementById('gacha-close');
+    overlay.classList.remove('hidden');
+    cards.innerHTML = '';
+    cards.classList.toggle('single', results.length === 1);
+    closeBtn.classList.add('hidden');
+
+    // 최고 등급에 따른 기둥 색
+    const best = results.reduce((a, r) => Math.max(a, Game.rarityIndex(r.rarity)), 0);
+    const pillarColors = ['#b9b9c9', '#4ade80', '#4e9df0', '#b04ef0', '#f0c34e'];
+    pillar.style.setProperty('--pillar-color', pillarColors[best]);
+    pillar.classList.remove('burst');
+
+    setTimeout(() => {
+      pillar.classList.add('burst');
+      setTimeout(() => {
+        results.forEach((r, i) => {
+          const card = document.createElement('div');
+          card.className = `gacha-result-card gr-${r.rarity}`;
+          card.style.setProperty('--delay', (i * 0.14) + 's');
+          const rr = DATA.rarities.find(x => x.id === r.rarity);
+          if (r.kind === 'equip') {
+            card.innerHTML = `
+              <div class="gr-icon">${r.item.icon}</div>
+              <div class="gr-name rc-${r.rarity}">[${rr.name}]<br>${r.item.name}</div>
+              <div class="gr-note">${r.item.typeName}</div>`;
+          } else {
+            card.innerHTML = `
+              <div class="gr-icon">${r.def.icon}</div>
+              <div class="gr-name rc-${r.rarity}">[${rr.name}]<br>${r.def.name}</div>
+              <div class="gr-note">${r.note}</div>`;
+          }
+          cards.appendChild(card);
+        });
+        setTimeout(() => closeBtn.classList.remove('hidden'), results.length * 140 + 500);
+      }, 450);
+    }, 600);
+  },
+
+  /* ══════════ 컬렉션 (펫 / 도감 / 업적) ══════════ */
+  renderCollection() {
+    const el = document.getElementById('tab-collection');
+    const s = Game.state;
+
+    /* 펫 */
+    let html = `
+      <div class="panel-title">🐾 펫 <span class="panel-sub" style="display:inline">— 클릭하여 동행할 펫을 선택하세요 (1마리)</span></div>
+      <div class="pet-grid">`;
+    for (const p of DATA.pets) {
+      const owned = s.pets[p.id];
+      const active = s.activePet === p.id;
+      const lv = owned ? owned.level : 0;
+      html += `
+        <div class="card pet-card bc-${p.rarity} ${active ? 'active-pet' : ''} ${owned ? '' : 'locked-pet'}" data-pet="${p.id}">
+          ${active ? '<span class="pet-active-tag">✅</span>' : ''}
+          <div class="pet-icon">${p.icon}</div>
+          <div class="pet-name rc-${p.rarity}">${p.name}</div>
+          <div class="pet-level">${owned ? `Lv.${lv} (${owned.count}회 획득)` : '미보유'}</div>
+          <div class="pet-bonus">${owned ? p.bonusText(lv) : p.bonusText(1) + ' (Lv.1 기준)'}</div>
+        </div>`;
+    }
+    html += `</div>`;
+
+    /* 업적 */
+    html += `
+      <div class="panel-title" style="margin-top:26px">🏅 업적</div>
+      <div class="ach-list">`;
+    for (const a of DATA.achievements) {
+      const claimed = s.achievementsClaimed.includes(a.id);
+      const done = a.check(s);
+      html += `
+        <div class="card ach-row ${claimed ? 'claimed' : done ? 'done' : ''}">
+          <div class="ach-icon">${a.icon}</div>
+          <div class="ach-body">
+            <div class="ach-name">${a.name}</div>
+            <div class="ach-desc">${a.desc}</div>
+          </div>
+          <div class="ach-reward">💠 ${a.reward}</div>
+          ${claimed ? '<span class="equipped-tag">완료</span>'
+            : done ? `<button class="btn btn-gold btn-tiny ach-claim-btn" data-ach="${a.id}">수령</button>`
+            : ''}
+        </div>`;
+    }
+    html += `</div>`;
+
+    /* 도감 */
+    const allMon = [];
+    for (const z of DATA.zones) allMon.push(...DATA.monsters[z.id]);
+    allMon.push(DATA.monsters.golden);
+    html += `
+      <div class="panel-title" style="margin-top:26px">📚 몬스터 도감
+        <span class="panel-sub" style="display:inline">— ${Object.keys(s.codex).filter(id => allMon.some(m => m.id === id)).length} / ${allMon.length} 발견 (신규 등록 시 💠 5)</span>
+      </div>
+      <div class="codex-grid">`;
+    for (const m of allMon) {
+      const kills = s.codex[m.id] || 0;
+      html += `
+        <div class="card codex-card ${kills ? '' : 'unknown'}">
+          <canvas width="64" height="64" data-kind="${m.kind}" data-tint="${m.tint}"></canvas>
+          <div class="cx-name">${kills ? m.name : '???'}</div>
+          <div class="cx-kills">${kills ? `${kills}마리 처치` : '미발견'}</div>
+        </div>`;
+    }
+    html += `</div>`;
+    el.innerHTML = html;
+
+    el.querySelectorAll('.codex-card canvas').forEach(c => {
+      Sprites.draw(c, c.dataset.kind, { tint: c.dataset.tint, flip: true });
+    });
+    el.querySelectorAll('.pet-card:not(.locked-pet)').forEach(c => c.addEventListener('click', () => {
+      Game.setActivePet(c.dataset.pet);
+      this.renderAll();
+      this.toast(Game.state.activePet ? '🐾 펫이 동행합니다!' : '펫을 쉬게 했습니다.');
+    }));
+    el.querySelectorAll('.ach-claim-btn').forEach(b => b.addEventListener('click', () => {
+      const a = DATA.achievements.find(x => x.id === b.dataset.ach);
+      if (Game.claimAchievement(b.dataset.ach)) {
+        this.toast(`🏅 [${a.name}] 달성! 💠 ${a.reward} 획득!`);
+        this.renderAll();
+      }
+    }));
   },
 
   /* ══════════ 상점 ══════════ */
@@ -408,12 +674,14 @@ const UI = {
       <div class="panel-sub">보유 골드: 🪙 ${Game.state.gold.toLocaleString()}</div>
       <div class="shop-grid">`;
     for (const it of DATA.shopItems) {
-      const owned = it.id === 'potion_hp' ? Game.state.potions.hp : it.id === 'potion_mp' ? Game.state.potions.mp : Game.state.stones;
+      const owned = it.id === 'potion_hp' ? Game.state.potions.hp
+        : it.id === 'potion_mp' ? Game.state.potions.mp
+        : it.id === 'stone' ? Game.state.stones : Game.state.gems;
       html += `
         <div class="card shop-item">
           <div class="si-name">${it.icon} ${it.name} <span class="panel-sub" style="display:inline">(보유 ${owned})</span></div>
           <div class="si-desc">${it.desc}</div>
-          <div class="si-price">🪙 ${it.price}</div>
+          <div class="si-price">🪙 ${it.price.toLocaleString()}</div>
           <button class="btn btn-gold btn-buy" data-id="${it.id}" ${Game.state.gold < it.price ? 'disabled' : ''}>구매</button>
         </div>`;
     }
@@ -468,7 +736,18 @@ const UI = {
     titleEl.textContent = title;
     titleEl.className = isDefeat ? 'defeat' : '';
     document.getElementById('result-body').innerHTML = bodyHtml;
-    document.getElementById('btn-result-again').classList.toggle('hidden', isDefeat);
+    const againBtn = document.getElementById('btn-result-again');
+    againBtn.classList.toggle('hidden', isDefeat);
+    // 모드별 버튼 라벨
+    if (!isDefeat && Battle.mode) {
+      if (Battle.mode.type === 'tower') againBtn.textContent = `🗼 다음 층 (${Battle.mode.floor + 1}F)`;
+      else if (Battle.mode.type === 'daily') {
+        const left = Game.dailyRunsLeft(Battle.mode.dungeonId);
+        againBtn.textContent = left > 0 ? `한 번 더 (${left}회 남음)` : '한 번 더';
+        if (left <= 0) againBtn.classList.add('hidden');
+      }
+      else againBtn.textContent = '한 번 더';
+    }
     modal.classList.remove('hidden');
   },
 };

@@ -153,6 +153,104 @@ const Sprites = (() => {
         '..mmmmmmmmmmm...',
       ],
     },
+    bat: {
+      dynamic: true,
+      rows: [
+        '.M...........M..',
+        'MMM.........MMM.',
+        'MMMM..MMMM..MMMM',
+        'MMMMMMMMMMMMMMMM',
+        'mMMMMKwMMKwMMMMm',
+        '.mMMMMMMMMMMMMm.',
+        '..mMMMwwMMMMm...',
+        '...mMMMMMMm.....',
+        '....M.....M.....',
+        '...mm....mm.....',
+      ],
+    },
+    mushroom: {
+      dynamic: true,
+      rows: [
+        '.....MMMMMM.....',
+        '...MMlMMMMMMM...',
+        '..MMllMMMMMMMM..',
+        '.MMMlMMMMMMMMMM.',
+        '.MMMMMMMMMMMMMM.',
+        '..mmmmmmmmmmmm..',
+        '....FFFFFFFF....',
+        '...FFKwFFKwFF...',
+        '...FFFFFFFFFF...',
+        '....FFFmmFFF....',
+        '.....FF..FF.....',
+        '....mm....mm....',
+      ],
+    },
+    ghost: {
+      dynamic: true,
+      rows: [
+        '.....MMMMMM.....',
+        '...MMMMMMMMMM...',
+        '..MMMMMMMMMMMM..',
+        '..MMKKMMMKKMMM..',
+        '..MMKwMMMKwMMM..',
+        '..MMMMMMMMMMMM..',
+        '..MMMmmmmMMMMM..',
+        '..MMMMMMMMMMMM..',
+        '..MMMMMMMMMMMM..',
+        '..MM.MMM.MM.MM..',
+        '..M...M...M..M..',
+      ],
+    },
+    golem: {
+      dynamic: true,
+      rows: [
+        '....MMMMMMMM....',
+        '...MMMMMMMMMM...',
+        '...MKKMMMMKKM...',
+        '...MKwMMMMKwM...',
+        '...MMMMMMMMMM...',
+        '..mMMmMMMMmMMm..',
+        '.MMm.MMMMMM.mMM.',
+        '.MMm.MmmmmM.mMM.',
+        '.mm..MMMMMM..mm.',
+        '....mMMmmMMm....',
+        '....MMM..MMM....',
+        '...mmm....mmm...',
+      ],
+    },
+    imp: {
+      dynamic: true,
+      rows: [
+        '..M..........M..',
+        '..MM........MM..',
+        '...MMMMMMMMMM...',
+        '..MMMMMMMMMMMM..',
+        '..MMKwMMMMKwMM..',
+        '..MMMMMMMMMMMM..',
+        '...MMmwwwwmMM...',
+        '..M..MMMMMM..M..',
+        '.mM..MMMMMM..Mm.',
+        '..mm..M..M..mm..',
+        '.....mm..mm.....',
+      ],
+    },
+    dragon: {
+      dynamic: true,
+      rows: [
+        '..K...M......M...K..',
+        '...MMMM......MMMM...',
+        '..MMMMM.MMMM.MMMMM..',
+        '.MMMMMMMMMMMMMMMMM..',
+        '.MMMMMKwMMMMKwMMMM..',
+        '..MMMMMMMMMMMMMMM...',
+        '..lMMwwMMMMMMwwMMl..',
+        '...MMMMMMMMMMMMMM...',
+        '...MMmmMMMMMMmmMM...',
+        '....mMMMMMMMMMMm....',
+        '.....MMM....MMM.....',
+        '....mmm......mmm....',
+      ],
+    },
   };
 
   /* ── 외부 이미지 오버라이드 캐시 ──
@@ -171,7 +269,8 @@ const Sprites = (() => {
 
   /* 시작 시 모든 후보 에셋을 미리 시도 (없으면 조용히 폴백) */
   function preload(onAnyLoad) {
-    const kinds = ['knight', 'rogue', 'merchant', 'mage', 'gladiator', 'slime'];
+    const kinds = ['knight', 'rogue', 'merchant', 'mage', 'gladiator',
+                   'slime', 'bat', 'mushroom', 'ghost', 'golem', 'imp', 'dragon'];
     kinds.forEach(k => {
       tryLoadAsset(`${k}_idle`, onAnyLoad);
       tryLoadAsset(`${k}_attack`, onAnyLoad);
@@ -200,13 +299,14 @@ const Sprites = (() => {
     }
   }
 
-  function slimePalette(tint) {
+  function dynamicPalette(tint) {
     return {
       M: tint,
       m: shade(tint, 0.55),
       l: shade(tint, 1.45),
       K: '#1a1420',
       w: '#ffffff',
+      F: '#f0e8d8', // 버섯 기둥 등 고정 크림색
     };
   }
 
@@ -233,7 +333,7 @@ const Sprites = (() => {
       if (opts.flip) { ctx.translate(w, 0); ctx.scale(-1, 1); }
       ctx.drawImage(asset.img, (w - size) / 2, h - size, size, size);
       ctx.restore();
-      if (opts.tint && kind === 'slime') { // 에셋 슬라임도 색조 변형
+      if (opts.tint && GRIDS[kind] && GRIDS[kind].dynamic) { // 에셋 몬스터도 색조 변형
         ctx.save();
         ctx.globalCompositeOperation = 'source-atop';
         ctx.globalAlpha = 0.35;
@@ -247,7 +347,7 @@ const Sprites = (() => {
     // 2) 내장 픽셀 아트
     const grid = GRIDS[kind];
     if (!grid) return;
-    const palette = grid.dynamic ? slimePalette(opts.tint || '#5ecb4a') : grid.palette;
+    const palette = grid.dynamic ? dynamicPalette(opts.tint || '#5ecb4a') : grid.palette;
     const dw = w * scale, dh = h * scale;
     ctx.save();
     ctx.translate((w - dw) / 2, h - dh);

@@ -41,10 +41,23 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-potion-mp').addEventListener('click', () => Battle.playerAction('potion_mp'));
   document.getElementById('btn-flee').addEventListener('click', () => Battle.playerAction('flee'));
 
-  // 전투 결과 모달
+  // 전투 결과 모달 — 한 번 더 / 다음 층
   document.getElementById('btn-result-again').addEventListener('click', () => {
     document.getElementById('modal-result').classList.add('hidden');
-    Battle.start(UI.lastZone);
+    const mode = UI.lastMode || { type: 'zone', zoneId: 'plain' };
+    if (mode.type === 'tower') mode.floor = Math.min(mode.floor + 1, Game.state.bestFloor + 1);
+    if (mode.type === 'daily' && Game.dailyRunsLeft(mode.dungeonId) <= 0) {
+      UI.showScreen('game'); UI.renderAll();
+      return UI.toast('오늘 입장 횟수를 모두 사용했습니다!');
+    }
+    UI.lastMode = mode;
+    Battle.start(mode);
+  });
+
+  // 가챠 연출 닫기
+  document.getElementById('gacha-close').addEventListener('click', () => {
+    document.getElementById('gacha-overlay').classList.add('hidden');
+    UI.renderAll();
   });
   document.getElementById('btn-result-village').addEventListener('click', () => {
     document.getElementById('modal-result').classList.add('hidden');
