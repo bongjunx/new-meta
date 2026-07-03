@@ -9,8 +9,25 @@
 </head>
 <body>
 
+<div id="screen-auth" class="screen">
+  <div class="auth-card">
+    <h1 class="game-title">NEW META</h1>
+    <p class="game-subtitle">ACCOUNT SAVE</p>
+    <div class="auth-tabs">
+      <button id="auth-login-tab" class="auth-tab active" type="button">로그인</button>
+      <button id="auth-register-tab" class="auth-tab" type="button">회원가입</button>
+    </div>
+    <div class="auth-form">
+      <input id="auth-username" type="text" maxlength="20" autocomplete="username" placeholder="아이디">
+      <input id="auth-password" type="password" maxlength="100" autocomplete="current-password" placeholder="비밀번호">
+      <button id="auth-submit" class="btn btn-gold btn-lg" type="button">로그인</button>
+      <p id="auth-message" class="auth-message"></p>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════ 직업 선택 화면 ══════════ -->
-<div id="screen-select" class="screen">
+<div id="screen-select" class="screen hidden">
   <div class="select-inner">
     <h1 class="game-title">NEW META</h1>
     <p class="game-subtitle">— 텍스트 턴제 RPG —</p>
@@ -43,6 +60,8 @@
       <div id="tb-gold" class="tb-gold">🪙 0</div>
       <div id="tb-stone" class="tb-stone">💎 0</div>
       <div id="tb-gem" class="tb-gem">💠 0</div>
+      <div id="tb-account" class="tb-account"></div>
+      <button id="btn-logout" class="btn btn-tiny btn-dark" type="button">로그아웃</button>
       <button id="btn-reset" class="btn btn-tiny btn-dark" title="저장 데이터 초기화">초기화</button>
     </div>
   </header>
@@ -112,6 +131,7 @@
         <button id="btn-potion-hp" class="btn action-btn pot-btn"><span class="ab-name">🧪 HP 물약</span><span class="ab-desc" id="pot-hp-cnt"></span></button>
         <button id="btn-potion-mp" class="btn action-btn pot-btn"><span class="ab-name">🔮 MP 물약</span><span class="ab-desc" id="pot-mp-cnt"></span></button>
         <button id="btn-flee" class="btn action-btn flee-btn"><span class="ab-name">🏃 도망</span><span class="ab-desc">50% 확률</span></button>
+        <button id="btn-auto-battle" class="btn action-btn auto-btn"><span class="ab-name">자동 전투 OFF</span><span class="ab-desc">스킬 자동 선택</span></button>
       </div>
     </div>
   </div>
@@ -146,8 +166,10 @@
 
 <script src="js/data.js"></script>
 <script src="js/sprites.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/game.js"></script>
 <script src="js/battle.js"></script>
+<script src="js/auto-battle.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
 </body>

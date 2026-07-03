@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEW META Admin</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-body">
+  <section id="admin-login" class="admin-login">
+    <div class="auth-card">
+      <h1 class="game-title">NEW META</h1>
+      <p class="game-subtitle">ADMIN</p>
+      <div class="auth-form">
+        <input id="admin-login-username" type="text" maxlength="20" autocomplete="username" placeholder="아이디" value="admin">
+        <input id="admin-login-password" type="password" maxlength="100" autocomplete="current-password" placeholder="비밀번호">
+        <button id="admin-login-submit" class="btn btn-gold btn-lg" type="button">관리자 로그인</button>
+        <p id="admin-login-message" class="auth-message"></p>
+      </div>
+      <a class="admin-link" href="/">게임으로 돌아가기</a>
+    </div>
+  </section>
+
+  <section id="admin-app" class="admin-shell hidden">
+    <header class="admin-header">
+      <div>
+        <h1>NEW META Admin</h1>
+        <p id="admin-current">접속 확인 중...</p>
+      </div>
+      <div class="admin-header-actions">
+        <a class="btn btn-dark" href="/">게임</a>
+        <button id="admin-refresh" class="btn btn-gold" type="button">새로고침</button>
+        <button id="admin-logout" class="btn btn-dark" type="button">로그아웃</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-stats" aria-label="관리자 요약">
+        <div class="card admin-stat-card">
+          <span>현재 접속 유저</span>
+          <b id="stat-online">0</b>
+          <small id="stat-online-note">최근 활동 기준</small>
+        </div>
+        <div class="card admin-stat-card">
+          <span>전체 유저</span>
+          <b id="stat-total">0</b>
+          <small>가입 계정 수</small>
+        </div>
+        <div class="card admin-stat-card">
+          <span>정상 계정</span>
+          <b id="stat-active">0</b>
+          <small>로그인 가능</small>
+        </div>
+        <div class="card admin-stat-card">
+          <span>정지 계정</span>
+          <b id="stat-suspended">0</b>
+          <small>admin 제외 차단</small>
+        </div>
+      </section>
+
+      <section class="card admin-card">
+        <div class="admin-section-head">
+          <div>
+            <h2>현재 접속 유저</h2>
+            <p>최근 활동 시간이 갱신된 유저를 접속 중으로 표시합니다.</p>
+          </div>
+        </div>
+        <div id="admin-online-users" class="admin-online-users">불러오는 중...</div>
+      </section>
+
+      <section class="card admin-card">
+        <div class="admin-section-head">
+          <div>
+            <h2>전체 유저</h2>
+            <p>유저 상태 변경과 재화 조정은 즉시 저장됩니다.</p>
+          </div>
+          <div id="admin-action-message" class="admin-action-message"></div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>상태</th>
+                <th>아이디</th>
+                <th>레벨</th>
+                <th>재화</th>
+                <th>마지막 로그인</th>
+                <th>마지막 활동</th>
+                <th>상태 변경</th>
+                <th>재화 변경</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-body">
+              <tr><td colspan="8">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card admin-card">
+        <div class="admin-section-head">
+          <div>
+            <h2>유저 로그</h2>
+            <p>가입, 로그인, 저장, 관리자 조작 기록을 최신순으로 확인합니다.</p>
+          </div>
+          <div class="admin-log-filter">
+            <input id="admin-log-user" type="text" maxlength="20" placeholder="아이디 필터">
+            <button id="admin-log-refresh" class="btn btn-dark" type="button">로그 조회</button>
+          </div>
+        </div>
+        <div id="admin-logs" class="admin-logs">불러오는 중...</div>
+      </section>
+    </main>
+  </section>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

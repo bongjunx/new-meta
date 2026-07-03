@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: new-meta-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-newmeta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-newmeta_password}
+      POSTGRES_DB: ${POSTGRES_DB:-newmeta}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - new_meta_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Containerfile.backend
+    container_name: new-meta-backend
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-newmeta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-newmeta_password}
+      POSTGRES_DB: ${POSTGRES_DB:-newmeta}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Containerfile.frontend
+    container_name: new-meta-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  new_meta_postgres_data:

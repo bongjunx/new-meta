@@ -10,6 +10,7 @@ const UI = {
 
   /* ══════════ 화면 전환 ══════════ */
   showScreen(name) {
+    document.getElementById('screen-auth').classList.add('hidden');
     for (const id of ['select', 'game', 'battle']) {
       document.getElementById(`screen-${id}`).classList.toggle('hidden', id !== name);
     }
@@ -84,6 +85,8 @@ const UI = {
     document.getElementById('tb-gold').textContent = `🪙 ${s.gold.toLocaleString()}`;
     document.getElementById('tb-stone').textContent = `💎 ${s.stones}`;
     document.getElementById('tb-gem').textContent = `💠 ${s.gems.toLocaleString()}`;
+    const account = document.getElementById('tb-account');
+    if (account) account.textContent = Auth.user ? `@${Auth.user.username}` : '';
 
     const setBar = (fill, text, cur, max) => {
       document.getElementById(fill).style.width = Math.max(0, Math.min(100, cur / max * 100)) + '%';
@@ -195,6 +198,8 @@ const UI = {
         </div>
       </div>`;
     el.innerHTML = html;
+    this.renderAutoBattlePanel(el);
+    this.renderAdminPanel(el);
 
     const loginBtn = document.getElementById('btn-login-claim');
     if (loginBtn) loginBtn.addEventListener('click', () => {
@@ -234,6 +239,101 @@ const UI = {
   },
 
   /* ══════════ 능력치 / 환생 ══════════ */
+  renderAutoBattlePanel(el) {
+    if (!window.AutoBattle) return;
+    const unlockedZones = DATA.zones.filter(z => Game.state.level >= z.reqLevel || Game.state.rebirths > 0);
+    const selected = AutoBattle.mode?.zoneId || unlockedZones[unlockedZones.length - 1]?.id || 'plain';
+    const panel = document.createElement('div');
+    panel.className = 'card auto-panel';
+    panel.innerHTML = `
+      <div class="panel-title">자동 전투 <span class="panel-sub" style="display:inline">스킬을 알아서 선택합니다</span></div>
+      <div class="auto-controls">
+        <select id="auto-zone-select">
+          ${unlockedZones.map(z => `<option value="${z.id}" ${z.id === selected ? 'selected' : ''}>${z.name} Lv.${z.levelRange[0]}~${z.levelRange[1]}</option>`).join('')}
+        </select>
+        <button id="btn-auto-start" class="btn ${AutoBattle.enabled ? 'btn-dark' : 'btn-gold'}">${AutoBattle.enabled ? '자동 전투 중지' : '자동 전투 시작'}</button>
+      </div>
+      <div class="panel-sub" id="auto-village-status">${AutoBattle.enabled ? (AutoBattle.lastStatus || '진행 중') : '대기 중'}</div>
+    `;
+    el.appendChild(panel);
+
+    panel.querySelector('#btn-auto-start').addEventListener('click', () => {
+      if (AutoBattle.enabled) {
+        AutoBattle.stop();
+        this.renderVillage();
+        return;
+      }
+      const zoneId = panel.querySelector('#auto-zone-select').value;
+      AutoBattle.start({ type: 'zone', zoneId });
+      this.renderVillage();
+    });
+  },
+
+  renderAdminPanel(el) {
+    if (!Auth.user?.isAdmin) return;
+    const panel = document.createElement('div');
+    panel.className = 'card admin-panel';
+    panel.innerHTML = `
+      <div class="panel-title">운영자 재화 변경 <span class="panel-sub" style="display:inline">admin 계정 전용</span></div>
+      <div class="admin-grid">
+        <input id="admin-target" placeholder="대상 아이디">
+        <input id="admin-gold" type="number" step="1" placeholder="골드 증감">
+        <input id="admin-gems" type="number" step="1" placeholder="다이아 증감">
+        <input id="admin-stones" type="number" step="1" placeholder="강화석 증감">
+        <button id="btn-admin-apply" class="btn btn-gold">적용</button>
+        <button id="btn-admin-refresh" class="btn btn-dark">목록 새로고침</button>
+      </div>
+      <div id="admin-message" class="panel-sub"></div>
+      <div id="admin-users" class="admin-users panel-sub">목록을 불러오는 중...</div>
+    `;
+    el.appendChild(panel);
+
+    const message = panel.querySelector('#admin-message');
+    const users = panel.querySelector('#admin-users');
+    const loadUsers = async () => {
+      try {
+        const data = await Auth.request('/api/admin/users');
+        users.innerHTML = data.users.map(u => `
+          <button class="admin-user-row" data-username="${u.username}">
+            <b>${u.username}</b>
+            <span>${u.hasSave ? `Lv.${u.level} / 골드 ${Number(u.gold).toLocaleString()} / 다이아 ${Number(u.gems).toLocaleString()} / 강화석 ${Number(u.stones).toLocaleString()}` : '저장 데이터 없음'}</span>
+          </button>
+        `).join('') || '가입자가 없습니다.';
+        users.querySelectorAll('.admin-user-row').forEach(row => {
+          row.addEventListener('click', () => {
+            panel.querySelector('#admin-target').value = row.dataset.username;
+          });
+        });
+      } catch (err) {
+        users.textContent = err.message || '목록을 불러오지 못했습니다.';
+      }
+    };
+
+    panel.querySelector('#btn-admin-refresh').addEventListener('click', loadUsers);
+    panel.querySelector('#btn-admin-apply').addEventListener('click', async () => {
+      message.textContent = '적용 중...';
+      try {
+        const data = await Auth.request('/api/admin/currency', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: panel.querySelector('#admin-target').value,
+            gold: panel.querySelector('#admin-gold').value,
+            gems: panel.querySelector('#admin-gems').value,
+            stones: panel.querySelector('#admin-stones').value,
+          }),
+        });
+        message.textContent = `${data.user}: 골드 ${data.balances.gold.toLocaleString()}, 다이아 ${data.balances.gems.toLocaleString()}, 강화석 ${data.balances.stones.toLocaleString()}`;
+        panel.querySelector('#admin-gold').value = '';
+        panel.querySelector('#admin-gems').value = '';
+        panel.querySelector('#admin-stones').value = '';
+        await loadUsers();
+      } catch (err) {
+        message.textContent = err.message || '적용 실패';
+      }
+    });
+    loadUsers();
+  },
+
   renderStats() {
     const el = document.getElementById('tab-stats');
     const t = Game.totalStats();
@@ -727,6 +827,7 @@ const UI = {
     document.getElementById('pot-hp-cnt').textContent = `${Game.state.potions.hp}개 보유`;
     document.getElementById('pot-mp-cnt').textContent = `${Game.state.potions.mp}개 보유`;
     document.getElementById('btn-flee').disabled = disabled;
+    if (window.AutoBattle) AutoBattle.renderControls();
   },
 
   /* ══════════ 전투 결과 모달 ══════════ */
@@ -749,5 +850,6 @@ const UI = {
       else againBtn.textContent = '한 번 더';
     }
     modal.classList.remove('hidden');
+    if (window.AutoBattle && isDefeat) AutoBattle.stop('패배해서 자동 전투를 멈췄습니다.');
   },
 };

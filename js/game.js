@@ -567,6 +567,19 @@ const Game = {
   /* ── 저장 / 불러오기 ── */
   save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.state)); } catch (e) {}
+    if (window.Auth && Auth.token && this.state) {
+      Auth.syncSave(this.state).catch(() => {});
+    }
+  },
+  loadFromSave(save) {
+    if (!save) return false;
+    try {
+      this.state = save;
+      this.migrate();
+      this.checkDaily();
+      localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
+      return true;
+    } catch (e) { return false; }
   },
   load() {
     try {
@@ -580,6 +593,7 @@ const Game = {
   },
   reset() {
     localStorage.removeItem(SAVE_KEY);
+    if (window.Auth && Auth.token) Auth.deleteSave().catch(() => {});
     this.state = null;
   },
 };
