@@ -23,7 +23,11 @@ app.use(express.static(path.join(__dirname, '..')));
 const ONLINE_WINDOW_MINUTES = 5;
 
 function signToken(user) {
-  return jwt.sign({ sub: user.id, username: user.username }, jwtSecret, { expiresIn: '30d' });
+  return jwt.sign({
+    sub: user.id,
+    username: user.username,
+    tokenVersion: Number(user.token_version || 0),
+  }, jwtSecret, { expiresIn: '30d' });
 }
 
 function normalizeUsername(value) {
@@ -67,6 +71,7 @@ async function initDb() {
       username VARCHAR(20) NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       status VARCHAR(20) NOT NULL DEFAULT 'active',
+      token_version INTEGER NOT NULL DEFAULT 0,
       last_login_at TIMESTAMPTZ,
       last_seen_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -74,6 +79,7 @@ async function initDb() {
     )
   `);
   await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'active'");
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER NOT NULL DEFAULT 0');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ');
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ');
   await pool.query(`
@@ -113,7 +119,7 @@ async function auth(req, res, next) {
   try {
     const payload = jwt.verify(token, jwtSecret);
     const { rows } = await pool.query(
-      'SELECT id, username, status, created_at, last_login_at, last_seen_at FROM users WHERE id = $1',
+      'SELECT id, username, status, token_version, created_at, last_login_at, last_seen_at FROM users WHERE id = $1',
       [payload.sub],
     );
     if (!rows.length) return res.status(401).json({ error: 'unauthorized' });
@@ -121,11 +127,14 @@ async function auth(req, res, next) {
     if (user.status !== 'active' && user.username !== 'admin') {
       return res.status(403).json({ error: 'account is suspended' });
     }
+    if (Number(payload.tokenVersion || 0) !== Number(user.token_version || 0)) {
+      return res.status(401).json({ error: 'session expired' });
+    }
     const seen = await pool.query(
       `UPDATE users
           SET last_seen_at = NOW()
         WHERE id = $1
-        RETURNING id, username, status, created_at, last_login_at, last_seen_at`,
+        RETURNING id, username, status, token_version, created_at, last_login_at, last_seen_at`,
       [user.id],
     );
     req.user = seen.rows[0];
@@ -155,7 +164,7 @@ app.post('/api/auth/register', async (req, res) => {
     const { rows } = await pool.query(
       `INSERT INTO users (username, password_hash, last_login_at, last_seen_at)
        VALUES ($1, $2, NOW(), NOW())
-       RETURNING id, username, status, created_at, last_login_at, last_seen_at`,
+       RETURNING id, username, status, token_version, created_at, last_login_at, last_seen_at`,
       [username, passwordHash],
     );
     const user = rows[0];
@@ -173,7 +182,7 @@ app.post('/api/auth/login', async (req, res) => {
   const password = String(req.body.password || '');
 
   const { rows } = await pool.query(
-    `SELECT u.id, u.username, u.password_hash, u.status, u.created_at, s.save_data
+    `SELECT u.id, u.username, u.password_hash, u.status, u.token_version, u.created_at, s.save_data
        FROM users u
        LEFT JOIN game_saves s ON s.user_id = u.id
       WHERE u.username = $1`,
@@ -358,6 +367,20 @@ app.get('/api/admin/logs', auth, requireAdmin, async (req, res) => {
   });
 });
 
+app.post('/api/admin/logout-all', auth, requireAdmin, async (req, res) => {
+  const { rowCount } = await pool.query(
+    `UPDATE users
+        SET token_version = token_version + 1,
+            last_seen_at = NULL,
+            updated_at = NOW()`,
+  );
+  await logUserEvent(req.user.id, 'admin:logout_all', {
+    admin: req.user.username,
+    affectedUsers: rowCount,
+  });
+  res.json({ ok: true, affectedUsers: rowCount });
+});
+
 app.patch('/api/admin/users/:username/status', auth, requireAdmin, async (req, res) => {
   const username = normalizeUsername(req.params.username);
   const status = String(req.body.status || '').trim().toLowerCase();
@@ -388,6 +411,51 @@ app.patch('/api/admin/users/:username/status', auth, requireAdmin, async (req, r
   });
 
   res.json({ ok: true, user: publicUser(target) });
+});
+
+app.patch('/api/admin/users/:username/level', auth, requireAdmin, async (req, res) => {
+  const username = normalizeUsername(req.params.username);
+  const level = Number(req.body.level);
+
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    return res.status(400).json({ error: 'target username is invalid' });
+  }
+  if (!Number.isInteger(level) || level < 1 || level > 200) {
+    return res.status(400).json({ error: 'level must be an integer from 1 to 200' });
+  }
+
+  const { rows } = await pool.query(
+    `SELECT u.id, u.username, s.save_data
+       FROM users u
+       LEFT JOIN game_saves s ON s.user_id = u.id
+      WHERE u.username = $1`,
+    [username],
+  );
+  const target = rows[0];
+  if (!target) return res.status(404).json({ error: 'target user not found' });
+  if (!target.save_data) return res.status(409).json({ error: 'target user has no game save yet' });
+
+  const save = target.save_data;
+  const previousLevel = Math.max(1, Math.trunc(Number(save.level || 1)));
+  save.level = level;
+  save.exp = 0;
+
+  await pool.query(
+    'UPDATE game_saves SET save_data = $2::jsonb, updated_at = NOW() WHERE user_id = $1',
+    [target.id, JSON.stringify(save)],
+  );
+  await logUserEvent(target.id, 'admin:level', {
+    admin: req.user.username,
+    previousLevel,
+    level,
+  });
+
+  res.json({
+    ok: true,
+    user: target.username,
+    previousLevel,
+    level,
+  });
 });
 
 app.post('/api/admin/currency', auth, requireAdmin, async (req, res) => {

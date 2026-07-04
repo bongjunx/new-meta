@@ -9,6 +9,7 @@ const AdminPage = {
     document.getElementById('admin-refresh').addEventListener('click', () => this.loadAll());
     document.getElementById('admin-log-refresh').addEventListener('click', () => this.loadLogs());
     document.getElementById('admin-suggestions-refresh').addEventListener('click', () => this.loadSuggestions());
+    document.getElementById('admin-logout-all').addEventListener('click', () => this.logoutAllUsers());
     document.getElementById('admin-logout').addEventListener('click', () => {
       Auth.clearSession();
       this.showLogin();
@@ -136,7 +137,7 @@ const AdminPage = {
   renderUsers() {
     const body = document.getElementById('admin-users-body');
     if (!this.users.length) {
-      body.innerHTML = '<tr><td colspan="8">가입한 유저가 없습니다.</td></tr>';
+      body.innerHTML = '<tr><td colspan="9">가입한 유저가 없습니다.</td></tr>';
       return;
     }
 
@@ -163,6 +164,12 @@ const AdminPage = {
         </td>
         <td>
           <div class="admin-row-controls">
+            <input class="admin-level" type="number" min="1" max="200" step="1" value="${user.hasSave ? Number(user.level || 1) : ''}" placeholder="Lv" ${user.hasSave ? '' : 'disabled'}>
+            <button class="btn btn-dark btn-tiny admin-level-apply" type="button" ${user.hasSave ? '' : 'disabled'}>변경</button>
+          </div>
+        </td>
+        <td>
+          <div class="admin-row-controls">
             <input class="admin-gold" type="number" step="1" placeholder="골드">
             <input class="admin-gems" type="number" step="1" placeholder="다이아">
             <input class="admin-stones" type="number" step="1" placeholder="강화석">
@@ -174,6 +181,9 @@ const AdminPage = {
 
     body.querySelectorAll('.admin-status-apply').forEach((button) => {
       button.addEventListener('click', () => this.applyStatus(button.closest('tr')));
+    });
+    body.querySelectorAll('.admin-level-apply').forEach((button) => {
+      button.addEventListener('click', () => this.applyLevel(button.closest('tr')));
     });
     body.querySelectorAll('.admin-currency-apply').forEach((button) => {
       button.addEventListener('click', () => this.applyCurrency(button.closest('tr')));
@@ -219,6 +229,23 @@ const AdminPage = {
     }
   },
 
+  async applyLevel(row) {
+    const username = row.dataset.username;
+    const level = row.querySelector('.admin-level').value;
+    this.setActionMessage('레벨 변경 중...');
+
+    try {
+      const data = await Auth.request(`/api/admin/users/${encodeURIComponent(username)}/level`, {
+        method: 'PATCH',
+        body: JSON.stringify({ level: Number(level) }),
+      });
+      this.setActionMessage(`${data.user}: Lv.${data.previousLevel} → Lv.${data.level}`, 'ok');
+      await this.loadAll();
+    } catch (err) {
+      this.setActionMessage(err.message || '레벨 변경 실패', 'error');
+    }
+  },
+
   async applyCurrency(row) {
     const username = row.dataset.username;
     this.setActionMessage('재화 변경 중...');
@@ -240,6 +267,21 @@ const AdminPage = {
       await this.loadAll();
     } catch (err) {
       this.setActionMessage(err.message || '재화 변경 실패', 'error');
+    }
+  },
+
+  async logoutAllUsers() {
+    if (!confirm('모든 접속자의 세션을 만료시킵니다. admin 본인도 다시 로그인해야 합니다. 진행할까요?')) return;
+
+    try {
+      const data = await Auth.request('/api/admin/logout-all', { method: 'POST' });
+      Auth.clearSession();
+      this.showLogin();
+      const message = document.getElementById('admin-login-message');
+      message.textContent = `전체 로그아웃 완료: ${Number(data.affectedUsers || 0).toLocaleString()}개 계정`;
+      message.classList.remove('error');
+    } catch (err) {
+      this.setActionMessage(err.message || '전체 로그아웃 실패', 'error');
     }
   },
 

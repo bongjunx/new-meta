@@ -1,4 +1,5 @@
 let authMode = 'login';
+let sessionWatchTimer = null;
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -41,11 +42,36 @@ async function submitAuth() {
       ? await Auth.login(username, password)
       : await Auth.register(username, password);
     await loadSaveAndEnter(data.save);
+    startSessionWatch();
   } catch (err) {
     setAuthMessage(err.message || '실패했습니다.', true);
   } finally {
     button.disabled = false;
   }
+}
+
+function forceLocalLogout(message = '세션이 만료되었습니다. 다시 로그인하세요.') {
+  if (window.AutoBattle) AutoBattle.stop('세션 만료로 자동 전투 중지');
+  Auth.clearSession();
+  Game.state = null;
+  localStorage.removeItem(SAVE_KEY);
+  Auth.show();
+  setAuthMode('login');
+  setAuthMessage(message, true);
+}
+
+function startSessionWatch() {
+  if (sessionWatchTimer) return;
+  sessionWatchTimer = setInterval(async () => {
+    if (!Auth.token) return;
+    try {
+      await Auth.checkSession();
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) {
+        forceLocalLogout('관리자에 의해 로그아웃되었습니다. 다시 로그인하세요.');
+      }
+    }
+  }, 30000);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -153,6 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const data = await Auth.request('/api/save');
     await loadSaveAndEnter(data.save);
+    startSessionWatch();
   } catch {
     Auth.clearSession();
     Auth.show();

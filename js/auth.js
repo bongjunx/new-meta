@@ -60,14 +60,19 @@ const Auth = {
   async me() {
     if (!this.token) return null;
     try {
-      const data = await this.request('/api/auth/me');
-      this.user = data.user;
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
-      return data.user;
+      return await this.checkSession();
     } catch {
       this.clearSession();
       return null;
     }
+  },
+
+  async checkSession() {
+    if (!this.token) return null;
+    const data = await this.request('/api/auth/me');
+    this.user = data.user;
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+    return data.user;
   },
 
   show() {
