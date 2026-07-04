@@ -122,6 +122,7 @@ const UI = {
       gacha: () => this.renderGacha(),
       collection: () => this.renderCollection(),
       shop: () => this.renderShop(),
+      suggest: () => this.renderSuggest(),
     }[tab];
     if (fn) fn();
   },
@@ -389,45 +390,76 @@ const UI = {
   renderSkills() {
     const el = document.getElementById('tab-skills');
     const cls = DATA.classes[Game.state.classId];
+    const s = Game.state;
     let html = `
-      <div class="panel-title">✨ 액티브 스킬 <span class="panel-sub" style="display:inline">— ${cls.icon} ${cls.name} 전용</span></div>
+      <div class="panel-title">✨ 액티브 스킬 <span class="panel-sub" style="display:inline">— ${cls.icon} ${cls.name} 전용 · 보유 📖 ${s.tomes} · 🪙 ${s.gold.toLocaleString()} · 💠 ${s.gems.toLocaleString()}</span></div>
+      <div class="panel-sub">스킬을 강화하면 위력이 레벨당 +${Math.round(DATA.skillUpgrade.powerPerLevel * 100)}% 증가합니다 (최대 Lv.${DATA.skillUpgrade.maxLevel}). 스킬의 서는 보스·탑·일일 던전에서 드랍됩니다.</div>
       <div class="skill-list">`;
     for (const sid of cls.skills) {
       const sk = DATA.skills[sid];
+      const lv = Game.skillLevel(sid);
+      const maxed = lv >= DATA.skillUpgrade.maxLevel;
+      const cost = maxed ? null : Game.skillUpgradeCost(sid);
+      const power = Math.round((DATA.skillPower(lv) - 1) * 100);
+      const canPay = cost && s.gold >= cost.gold && s.tomes >= cost.tomes && (cost.gems === 0 || s.gems >= cost.gems);
       html += `
         <div class="card skill-card">
           <div class="skill-icon ${sk.ult ? 'ult' : ''}">${sk.icon}</div>
           <div class="skill-body">
-            <div class="skill-name">${sk.name}${sk.ult ? '<span class="tag">궁극기</span>' : ''}</div>
+            <div class="skill-name">${sk.name} <span class="enh-tag">Lv.${lv}</span>${sk.ult ? '<span class="tag">궁극기</span>' : ''}
+              ${power > 0 ? `<span class="sbonus">위력 +${power}%</span>` : ''}</div>
             <div class="skill-meta">MP ${sk.mp} · 쿨타임 ${sk.cd}턴${sk.goldCost ? ` · 골드 ${sk.goldCost}` : ''}</div>
             <div class="skill-desc">${sk.desc}</div>
+          </div>
+          <div class="skill-upgrade">
+            ${maxed
+              ? '<span class="enh-tag">MAX</span>'
+              : `<button class="btn btn-gold btn-tiny btn-skill-up" data-sid="${sid}" ${canPay ? '' : 'disabled'}>강화</button>
+                 <div class="skill-cost">🪙${cost.gold.toLocaleString()}<br>📖${cost.tomes}${cost.gems ? `<br>💠${cost.gems}` : ''}</div>`}
           </div>
         </div>`;
     }
     html += `</div>
-      <div class="panel-title" style="margin-top:26px">🌟 공통 패시브
-        <span class="sp-badge">스킬 포인트: ${Game.state.skillPoints}</span>
+      <div class="panel-title" style="margin-top:26px">🌟 공통 패시브 (${DATA.passives.length}종 · 각 최대 Lv.${DATA.passiveMaxLevel})
+        <span class="sp-badge">스킬 포인트: ${s.skillPoints}</span>
       </div>
-      <div class="panel-sub">레벨 업마다 포인트 1을 얻습니다. 배운 패시브는 영구 적용됩니다.</div>
+      <div class="panel-sub">레벨 업마다 SP 1을 얻습니다. 패시브 레벨이 오를수록 필요 SP가 늘어납니다 (25레벨 구간마다 +1).</div>
       <div class="passive-grid">`;
     for (const p of DATA.passives) {
-      const learned = Game.state.passives.includes(p.id);
+      const lv = Game.passiveLevel(p.id);
+      const maxed = lv >= DATA.passiveMaxLevel;
+      const cost = DATA.passiveSpCost(lv);
       html += `
-        <div class="card passive-card ${learned ? 'learned' : ''}">
-          <div class="p-name">${p.icon} ${p.name} ${learned ? '<span class="equipped-tag">습득</span>' : ''}</div>
-          <div class="p-desc">${p.desc}</div>
-          ${learned ? '' : `<button class="btn btn-dark btn-learn" data-pid="${p.id}" ${Game.state.skillPoints < 1 ? 'disabled' : ''}>배우기 (1 SP)</button>`}
+        <div class="card passive-card ${lv > 0 ? 'learned' : ''}">
+          <div class="p-name">${p.icon} ${p.name} ${lv > 0 ? `<span class="enh-tag">Lv.${lv}</span>` : ''}</div>
+          <div class="p-desc">현재: ${lv > 0 ? p.descFn(lv) : '미습득'}<br>다음: ${maxed ? '—' : p.descFn(lv + 1)}</div>
+          ${maxed ? '<span class="enh-tag">MAX</span>' : `
+            <div class="passive-btns">
+              <button class="btn btn-dark btn-tiny btn-pass-up" data-pid="${p.id}" data-times="1" ${s.skillPoints < cost ? 'disabled' : ''}>+1 (${cost} SP)</button>
+              <button class="btn btn-dark btn-tiny btn-pass-up" data-pid="${p.id}" data-times="10" ${s.skillPoints < cost ? 'disabled' : ''}>+10</button>
+            </div>`}
         </div>`;
     }
     html += `</div>`;
     el.innerHTML = html;
 
-    el.querySelectorAll('.btn-learn').forEach(b => {
+    el.querySelectorAll('.btn-skill-up').forEach(b => {
       b.addEventListener('click', () => {
-        if (Game.learnPassive(b.dataset.pid)) {
-          this.toast('🌟 패시브를 배웠다!');
-          this.renderAll();
+        const res = Game.upgradeSkill(b.dataset.sid);
+        if (!res.ok) {
+          const msg = { max: '이미 최대 레벨입니다!', gold: '골드가 부족합니다!', tome: '스킬의 서가 부족합니다!', gems: '다이아가 부족합니다!' }[res.reason];
+          return this.toast(msg);
         }
+        this.toast(`📖 ${DATA.skills[b.dataset.sid].name} Lv.${res.level} 달성!`);
+        this.renderAll();
+      });
+    });
+    el.querySelectorAll('.btn-pass-up').forEach(b => {
+      b.addEventListener('click', () => {
+        const n = Game.upgradePassive(b.dataset.pid, parseInt(b.dataset.times));
+        if (n === 0) return this.toast('스킬 포인트가 부족합니다!');
+        this.toast(`🌟 패시브 +${n} 레벨!`);
+        this.renderAll();
       });
     });
   },
@@ -467,9 +499,14 @@ const UI = {
     }
     html += `</div>
       <div class="panel-title">📦 소지품
-        <span class="panel-sub" style="display:inline">— 🧪 HP 물약 ${s.potions.hp} · 🔮 MP 물약 ${s.potions.mp} · 💎 강화석 ${s.stones}</span>
+        <span class="panel-sub" style="display:inline">— 🧪 HP 물약 ${s.potions.hp} · 🔮 MP 물약 ${s.potions.mp} · 💎 강화석 ${s.stones} · 📖 스킬의 서 ${s.tomes}</span>
       </div>
-      <div class="panel-sub">장비를 클릭하면 장착/판매할 수 있습니다.</div>
+      <div class="panel-sub">장비를 클릭하면 장착/판매할 수 있습니다. 일괄판매는 장착 중인 장비를 제외합니다.</div>
+      <div class="bulk-sell-row">
+        <button class="btn btn-dark btn-tiny btn-bulk" data-max="1">고급 이하 일괄판매</button>
+        <button class="btn btn-dark btn-tiny btn-bulk" data-max="2">희귀 이하 일괄판매</button>
+        <button class="btn btn-danger btn-tiny btn-bulk" data-max="3">전설 미만 일괄판매</button>
+      </div>
       <div class="inv-grid">`;
     if (!s.inventory.length) html += `<div class="panel-sub">아직 획득한 장비가 없습니다. 사냥으로 장비를 모아보세요!</div>`;
     for (const item of s.inventory) {
@@ -488,6 +525,18 @@ const UI = {
     }));
     el.querySelectorAll('.item-card').forEach(c => c.addEventListener('click', () => {
       this.showItemModal(parseInt(c.dataset.uid));
+    }));
+    el.querySelectorAll('.btn-bulk').forEach(b => b.addEventListener('click', () => {
+      const maxIdx = parseInt(b.dataset.max);
+      const rarityName = DATA.rarities[maxIdx].name;
+      const equippedUids = new Set(Object.values(Game.state.equipped).filter(v => v != null));
+      const count = Game.state.inventory.filter(i =>
+        !equippedUids.has(i.uid) && Game.rarityIndex(i.rarity) <= maxIdx).length;
+      if (count === 0) return this.toast('판매할 장비가 없습니다.');
+      if (!confirm(`[${rarityName}] 이하 등급 장비 ${count}개를 모두 판매할까요?\n(장착 중인 장비는 제외됩니다)`)) return;
+      const res = Game.sellBulk(maxIdx);
+      this.toast(`🪙 장비 ${res.count}개를 ${res.gold.toLocaleString()} 골드에 일괄 판매!`);
+      this.renderAll();
     }));
   },
 
@@ -706,27 +755,42 @@ const UI = {
     }
     html += `</div>`;
 
-    /* 업적 */
+    /* 업적 (카테고리별) */
+    const claimableList = Game.claimableAchievements();
+    const claimableSum = claimableList.reduce((a, x) => a + x.reward, 0);
     html += `
-      <div class="panel-title" style="margin-top:26px">🏅 업적</div>
-      <div class="ach-list">`;
-    for (const a of DATA.achievements) {
-      const claimed = s.achievementsClaimed.includes(a.id);
-      const done = a.check(s);
+      <div class="panel-title" style="margin-top:26px">🏅 업적
+        <span class="panel-sub" style="display:inline">— ${s.achievementsClaimed.length} / ${DATA.achievements.length} 달성</span>
+        ${claimableList.length ? `<button id="btn-claim-all" class="btn btn-gold btn-tiny ach-claim-btn" style="margin-left:10px">모두 수령 (${claimableList.length}개 · 💠${claimableSum.toLocaleString()})</button>` : ''}
+      </div>`;
+    const cats = [...new Set(DATA.achievements.map(a => a.cat))];
+    for (const cat of cats) {
+      const list = DATA.achievements.filter(a => a.cat === cat);
+      const doneCount = list.filter(a => s.achievementsClaimed.includes(a.id)).length;
+      const catClaimable = list.filter(a => !s.achievementsClaimed.includes(a.id) && a.check(s)).length;
       html += `
-        <div class="card ach-row ${claimed ? 'claimed' : done ? 'done' : ''}">
-          <div class="ach-icon">${a.icon}</div>
-          <div class="ach-body">
-            <div class="ach-name">${a.name}</div>
-            <div class="ach-desc">${a.desc}</div>
-          </div>
-          <div class="ach-reward">💠 ${a.reward}</div>
-          ${claimed ? '<span class="equipped-tag">완료</span>'
-            : done ? `<button class="btn btn-gold btn-tiny ach-claim-btn" data-ach="${a.id}">수령</button>`
-            : ''}
-        </div>`;
+        <details class="ach-cat" ${catClaimable ? 'open' : ''}>
+          <summary class="ach-cat-head">${cat} <span class="panel-sub" style="display:inline">${doneCount}/${list.length}</span>
+            ${catClaimable ? `<span class="tab-badge"></span>` : ''}</summary>
+          <div class="ach-list">`;
+      for (const a of list) {
+        const claimed = s.achievementsClaimed.includes(a.id);
+        const done = a.check(s);
+        html += `
+          <div class="card ach-row ${claimed ? 'claimed' : done ? 'done' : ''}">
+            <div class="ach-icon">${a.icon}</div>
+            <div class="ach-body">
+              <div class="ach-name">${a.name}</div>
+              <div class="ach-desc">${a.desc}</div>
+            </div>
+            <div class="ach-reward">💠 ${a.reward}</div>
+            ${claimed ? '<span class="equipped-tag">완료</span>'
+              : done ? `<button class="btn btn-gold btn-tiny ach-claim-btn" data-ach="${a.id}">수령</button>`
+              : ''}
+          </div>`;
+      }
+      html += `</div></details>`;
     }
-    html += `</div>`;
 
     /* 도감 */
     const allMon = [];
@@ -757,32 +821,47 @@ const UI = {
       this.renderAll();
       this.toast(Game.state.activePet ? '🐾 펫이 동행합니다!' : '펫을 쉬게 했습니다.');
     }));
-    el.querySelectorAll('.ach-claim-btn').forEach(b => b.addEventListener('click', () => {
+    el.querySelectorAll('.ach-claim-btn[data-ach]').forEach(b => b.addEventListener('click', () => {
       const a = DATA.achievements.find(x => x.id === b.dataset.ach);
       if (Game.claimAchievement(b.dataset.ach)) {
         this.toast(`🏅 [${a.name}] 달성! 💠 ${a.reward} 획득!`);
         this.renderAll();
       }
     }));
+    const claimAllBtn = el.querySelector('#btn-claim-all');
+    if (claimAllBtn) claimAllBtn.addEventListener('click', () => {
+      let total = 0, count = 0;
+      for (const a of Game.claimableAchievements()) {
+        if (Game.claimAchievement(a.id)) { total += a.reward; count++; }
+      }
+      if (count) this.toast(`🏅 업적 ${count}개 일괄 수령! 💠 ${total.toLocaleString()} 획득!`);
+      this.renderAll();
+    });
   },
 
   /* ══════════ 상점 ══════════ */
   renderShop() {
     const el = document.getElementById('tab-shop');
+    const disc = Game.passiveMods().shopDiscount || 0;
     let html = `
       <div class="panel-title">🏪 잡화 상점</div>
-      <div class="panel-sub">보유 골드: 🪙 ${Game.state.gold.toLocaleString()}</div>
+      <div class="panel-sub">보유: 🪙 ${Game.state.gold.toLocaleString()} · 💠 ${Game.state.gems.toLocaleString()}${disc > 0 ? ` · 🧾 절약 정신 할인 ${Math.round(disc * 10) / 10}%` : ''}</div>
       <div class="shop-grid">`;
     for (const it of DATA.shopItems) {
       const owned = it.id === 'potion_hp' ? Game.state.potions.hp
         : it.id === 'potion_mp' ? Game.state.potions.mp
-        : it.id === 'stone' ? Game.state.stones : Game.state.gems;
+        : it.id === 'stone' ? Game.state.stones
+        : it.id === 'tome' ? Game.state.tomes : Game.state.gems;
+      const price = Game.shopPrice(it);
+      const isGems = it.currency === 'gems';
+      const canBuy = isGems ? Game.state.gems >= price : Game.state.gold >= price;
+      const discounted = !isGems && price < it.price;
       html += `
         <div class="card shop-item">
           <div class="si-name">${it.icon} ${it.name} <span class="panel-sub" style="display:inline">(보유 ${owned})</span></div>
           <div class="si-desc">${it.desc}</div>
-          <div class="si-price">🪙 ${it.price.toLocaleString()}</div>
-          <button class="btn btn-gold btn-buy" data-id="${it.id}" ${Game.state.gold < it.price ? 'disabled' : ''}>구매</button>
+          <div class="si-price">${isGems ? '💠' : '🪙'} ${price.toLocaleString()}${discounted ? ` <s class="panel-sub" style="display:inline">${it.price.toLocaleString()}</s>` : ''}</div>
+          <button class="btn btn-gold btn-buy" data-id="${it.id}" ${canBuy ? '' : 'disabled'}>구매</button>
         </div>`;
     }
     html += `</div>`;
@@ -792,8 +871,55 @@ const UI = {
       if (Game.buyItem(b.dataset.id)) {
         this.toast('구매 완료!');
         this.renderAll();
-      } else this.toast('골드가 부족합니다!');
+      } else this.toast('재화가 부족합니다!');
     }));
+  },
+
+  /* ══════════ 건의사항 (유저 → 운영자 단방향) ══════════ */
+  renderSuggest() {
+    const el = document.getElementById('tab-suggest');
+    const online = !!(window.Auth && Auth.token);
+    el.innerHTML = `
+      <div class="panel-title">📮 건의사항 보내기</div>
+      <div class="panel-sub">게임에 대한 의견을 운영자에게 전달합니다. (단방향 — 답장은 오지 않지만 운영자가 모두 읽습니다. 하루 최대 10건)</div>
+      <div class="card suggest-card">
+        <textarea id="suggest-text" maxlength="1000" rows="6"
+          placeholder="버그 제보, 밸런스 의견, 원하는 콘텐츠 등 자유롭게 적어주세요. (4자 이상)"
+          ${online ? '' : 'disabled'}></textarea>
+        <div class="suggest-foot">
+          <span id="suggest-count" class="panel-sub" style="margin:0">0 / 1000</span>
+          <button id="btn-suggest-send" class="btn btn-gold" ${online ? '' : 'disabled'}>보내기</button>
+        </div>
+        ${online ? '' : '<div class="panel-sub" style="margin-top:8px">⚠️ 오프라인 모드에서는 건의사항을 보낼 수 없습니다. 서버 접속 후 이용해주세요.</div>'}
+      </div>`;
+
+    const textEl = document.getElementById('suggest-text');
+    const countEl = document.getElementById('suggest-count');
+    if (textEl) textEl.addEventListener('input', () => {
+      countEl.textContent = `${textEl.value.length} / 1000`;
+    });
+    const sendBtn = document.getElementById('btn-suggest-send');
+    if (sendBtn && online) sendBtn.addEventListener('click', async () => {
+      const content = textEl.value.trim();
+      if (content.length < 4) return this.toast('4자 이상 입력해주세요!');
+      sendBtn.disabled = true;
+      try {
+        await Auth.request('/api/suggestions', {
+          method: 'POST',
+          body: JSON.stringify({ content }),
+        });
+        Game.state.counters.suggestions = (Game.state.counters.suggestions || 0) + 1;
+        Game.save();
+        textEl.value = '';
+        countEl.textContent = '0 / 1000';
+        this.toast('📮 건의사항이 운영자에게 전달되었습니다. 감사합니다!');
+        this.renderTopbar();
+      } catch (err) {
+        this.toast(err.message || '전송에 실패했습니다.');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    });
   },
 
   /* ══════════ 전투 액션 버튼 ══════════ */
@@ -811,7 +937,7 @@ const UI = {
       const noGold = sk.goldCost && Game.state.gold < sk.goldCost;
       btn.disabled = disabled || sk.curCd > 0 || noMp || noGold;
       btn.innerHTML = `
-        <span class="ab-name">${sk.icon} ${sk.name}</span>
+        <span class="ab-name">${sk.icon} ${sk.name}${sk.level > 1 ? ` <span class="enh-tag">Lv.${sk.level}</span>` : ''}</span>
         <span class="ab-desc">MP ${sk.mp} · 쿨 ${sk.cd}턴${sk.goldCost ? ` · 🪙${sk.goldCost}` : ''}</span>
         ${sk.curCd > 0 ? `<span class="cd-overlay">⏳ ${sk.curCd}</span>` : ''}`;
       btn.title = sk.desc;

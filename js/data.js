@@ -98,19 +98,49 @@ DATA.skills = {
               desc: '[궁극기] 광란에 빠져 4연격. 각 110% 피해.' },
 };
 
-/* ── 공통 패시브 10종 ── */
+/* ── 공통 패시브 20종 (각 최대 100레벨, 스킬 포인트로 성장) ──
+   per: 레벨당 증가량. 표기값은 소수 1자리 반올림 */
+DATA.passiveMaxLevel = 100;
+/* 레벨업 비용(SP): 1~24레벨 1, 25~49레벨 2, 50~74레벨 3, 75~99레벨 4 */
+DATA.passiveSpCost = lv => 1 + Math.floor(lv / 25);
+DATA.pv = (per, lv) => Math.round(per * lv * 10) / 10;
 DATA.passives = [
-  { id: 'p_vitality', name: '강인함',     icon: '❤️', desc: '최대 HP +12%',            mod: { hpPct: 12 } },
-  { id: 'p_meditate', name: '명상',       icon: '🧘', desc: '최대 MP +15%',            mod: { mpPct: 15 } },
-  { id: 'p_strength', name: '완력',       icon: '💪', desc: '공격력 +10%',             mod: { atkPct: 10 } },
-  { id: 'p_guard',    name: '수비 훈련',  icon: '🛡️', desc: '방어력 +12%',             mod: { defPct: 12 } },
-  { id: 'p_eagle',    name: '급소 간파',  icon: '🎯', desc: '치명타 확률 +6%p',        mod: { critRate: 6 } },
-  { id: 'p_cruel',    name: '잔혹함',     icon: '🩸', desc: '치명타 피해 +25%p',       mod: { critDmg: 25 } },
-  { id: 'p_leech',    name: '흡혈',       icon: '🦇', desc: '가한 피해의 6%만큼 HP 회복', mod: { lifesteal: 6 } },
-  { id: 'p_flow',     name: '마나 순환',  icon: '💧', desc: '매 턴 MP 4 회복',         mod: { mpRegen: 4 } },
-  { id: 'p_recover',  name: '재생력',     icon: '🌿', desc: '매 턴 최대 HP의 2% 회복', mod: { hpRegenPct: 2 } },
-  { id: 'p_lucky',    name: '행운',       icon: '🍀', desc: '골드 획득 +20%, 드랍률 +15%p', mod: { goldPct: 20, dropRate: 15 } },
+  { id: 'p_vitality', name: '강인함',     icon: '❤️', per: { hpPct: 1 },        descFn: lv => `최대 HP +${DATA.pv(1, lv)}%` },
+  { id: 'p_meditate', name: '명상',       icon: '🧘', per: { mpPct: 1.2 },      descFn: lv => `최대 MP +${DATA.pv(1.2, lv)}%` },
+  { id: 'p_strength', name: '완력',       icon: '💪', per: { atkPct: 0.8 },     descFn: lv => `공격력 +${DATA.pv(0.8, lv)}%` },
+  { id: 'p_guard',    name: '수비 훈련',  icon: '🛡️', per: { defPct: 1 },       descFn: lv => `방어력 +${DATA.pv(1, lv)}%` },
+  { id: 'p_eagle',    name: '급소 간파',  icon: '🎯', per: { critRate: 0.15 },  descFn: lv => `치명타 확률 +${DATA.pv(0.15, lv)}%p` },
+  { id: 'p_cruel',    name: '잔혹함',     icon: '🩸', per: { critDmg: 1 },      descFn: lv => `치명타 피해 +${DATA.pv(1, lv)}%p` },
+  { id: 'p_leech',    name: '흡혈',       icon: '🦇', per: { lifesteal: 0.08 }, descFn: lv => `가한 피해의 ${DATA.pv(0.08, lv)}% HP 회복` },
+  { id: 'p_flow',     name: '마나 순환',  icon: '💧', per: { mpRegen: 0.15 },   descFn: lv => `매 턴 MP ${DATA.pv(0.15, lv)} 회복` },
+  { id: 'p_recover',  name: '재생력',     icon: '🌿', per: { hpRegenPct: 0.05 },descFn: lv => `매 턴 최대 HP의 ${DATA.pv(0.05, lv)}% 회복` },
+  { id: 'p_lucky',    name: '행운',       icon: '🍀', per: { goldPct: 0.5, dropRate: 0.2 }, descFn: lv => `골드 +${DATA.pv(0.5, lv)}%, 드랍률 +${DATA.pv(0.2, lv)}%p` },
+  { id: 'p_pierce',   name: '관통',       icon: '🗡️', per: { penetration: 0.3 },descFn: lv => `적 방어력 ${DATA.pv(0.3, lv)}% 무시` },
+  { id: 'p_endure',   name: '인내',       icon: '🧱', per: { dmgReduce: 0.25 }, descFn: lv => `받는 피해 ${DATA.pv(0.25, lv)}% 감소` },
+  { id: 'p_alchemy',  name: '연금술',     icon: '⚗️', per: { potionPct: 0.6 },  descFn: lv => `물약 회복량 +${DATA.pv(0.6, lv)}%` },
+  { id: 'p_venom',    name: '맹독술',     icon: '🐍', per: { dotPct: 1 },       descFn: lv => `독·화상 피해 +${DATA.pv(1, lv)}%` },
+  { id: 'p_bulwark',  name: '수호의 맹세',icon: '🔰', per: { shieldBoost: 1 },  descFn: lv => `보호막 효과 +${DATA.pv(1, lv)}%` },
+  { id: 'p_slayer',   name: '학살자',     icon: '⚰️', per: { killHealPct: 0.05 },descFn: lv => `처치 시 최대 HP의 ${DATA.pv(0.05, lv)}% 회복` },
+  { id: 'p_sage',     name: '현자의 지혜',icon: '📘', per: { expPct: 0.5 },     descFn: lv => `경험치 획득 +${DATA.pv(0.5, lv)}%` },
+  { id: 'p_smith',    name: '강화의 손길',icon: '🔧', per: { enhanceRate: 0.05 },descFn: lv => `강화 성공 확률 +${DATA.pv(0.05, lv)}%p` },
+  { id: 'p_thrift',   name: '절약 정신',  icon: '🧾', per: { shopDiscount: 0.25 },descFn: lv => `상점 가격 ${DATA.pv(0.25, lv)}% 할인` },
+  { id: 'p_warlord',  name: '투신의 혼',  icon: '👺', per: { ultDmgPct: 0.6 },  descFn: lv => `궁극기 피해 +${DATA.pv(0.6, lv)}%` },
 ];
+
+/* ── 액티브 스킬 강화 (최대 100레벨, 비용이 가파르게 상승) ──
+   효과: 레벨당 스킬 위력(피해/회복/보호막/버프/도트) +2% */
+DATA.skillUpgrade = {
+  maxLevel: 100,
+  powerPerLevel: 0.02,
+  cost(lv) { // lv: 현재 레벨 (lv → lv+1)
+    return {
+      gold: 200 * lv * lv,
+      tomes: Math.ceil(lv / 5),
+      gems: lv >= 50 ? 5 + Math.floor(lv / 10) : 0,
+    };
+  },
+};
+DATA.skillPower = lv => 1 + (lv - 1) * DATA.skillUpgrade.powerPerLevel;
 
 /* ── 사냥터 ── */
 DATA.zones = [
@@ -128,7 +158,28 @@ DATA.zones = [
     desc: '용암이 끓어오르는 작열의 땅.' },
   { id: 'castle',  name: '마왕성',      emoji: '🏰', reqLevel: 22, levelRange: [22, 32],
     bg: 'zone-castle',  particle: 'pt-void', banner: 'linear-gradient(135deg,#200a30,#4a1a6b,#8a2bd8)',
-    desc: '마왕이 군림하는 최후의 성. 전설 장비를 노려라.', boss: true },
+    desc: '마왕이 군림하는 성. 여기서부터가 진짜 시작이다.', boss: true },
+  { id: 'frost',   name: '영원한 설원', emoji: '❄️', reqLevel: 32, levelRange: [32, 48],
+    bg: 'zone-frost',   particle: 'pt-snow', banner: 'linear-gradient(135deg,#1a2b3d,#3d5e7a,#9ac9e8)',
+    desc: '모든 것이 얼어붙은 극한의 땅.' },
+  { id: 'ruins',   name: '고대 유적',   emoji: '🏺', reqLevel: 48, levelRange: [48, 68],
+    bg: 'zone-ruins',   particle: 'pt-firefly', banner: 'linear-gradient(135deg,#3d3020,#6b5535,#b09a5e)',
+    desc: '잊혀진 문명의 무덤. 고대의 수호자들이 잠들어 있다.' },
+  { id: 'abyss',   name: '심해 신전',   emoji: '🌊', reqLevel: 68, levelRange: [68, 92],
+    bg: 'zone-abyss',   particle: 'pt-crystal', banner: 'linear-gradient(135deg,#0a1a30,#16305e,#2b5e9a)',
+    desc: '깊은 바다 아래 가라앉은 신전.', stoneBonus: 10 },
+  { id: 'sky',     name: '하늘 섬',     emoji: '☁️', reqLevel: 92, levelRange: [92, 120],
+    bg: 'zone-sky',     particle: 'pt-star', banner: 'linear-gradient(135deg,#2b3d6b,#5e7ad8,#b0c9ff)',
+    desc: '구름 위에 떠 있는 신비한 섬.', boss: true },
+  { id: 'rift',    name: '차원의 균열', emoji: '🌀', reqLevel: 120, levelRange: [120, 150],
+    bg: 'zone-rift',    particle: 'pt-void', banner: 'linear-gradient(135deg,#2b0a3d,#6b16a0,#d84aff)',
+    desc: '차원이 뒤틀린 공간. 무엇이 나올지 알 수 없다.', boss: true },
+  { id: 'divine',  name: '신들의 정원', emoji: '⛩️', reqLevel: 150, levelRange: [150, 180],
+    bg: 'zone-divine',  particle: 'pt-star', banner: 'linear-gradient(135deg,#4a3d16,#9a8035,#ffe89a)',
+    desc: '신들이 거니는 황금빛 정원.', boss: true },
+  { id: 'origin',  name: '태초의 대지', emoji: '🌋', reqLevel: 180, levelRange: [180, 200],
+    bg: 'zone-origin',  particle: 'pt-ember', banner: 'linear-gradient(135deg,#3d0a16,#8a1630,#ff2b4a)',
+    desc: '세계가 시작된 곳. 최강의 존재, 용신이 기다린다.', boss: true },
 ];
 
 /* ── 몬스터 ──
@@ -164,6 +215,55 @@ DATA.monsters = {
     { id: 'imp_demon', name: '마족 임프',     kind: 'imp',      tint: '#f04e9d', statMult: 1.45, skills: ['m_tackle', 'm_bite', 'm_burn'] },
     { id: 'golem_void',name: '공허 골렘',     kind: 'golem',    tint: '#5e4a8a', statMult: 1.55, skills: ['m_tackle', 'm_harden', 'm_slam'] },
     { id: 'dragon_dark',name: '마왕의 흑룡',  kind: 'dragon',   tint: '#8a2bd8', statMult: 2.2,  boss: true, scale: 1.5,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  frost: [
+    { id: 'slime_frost', name: '서리 슬라임',   kind: 'slime',    tint: '#7ad4ff', statMult: 1.5,  skills: ['m_tackle', 'm_spit'] },
+    { id: 'bat_blizzard',name: '눈보라 박쥐',   kind: 'bat',      tint: '#b0e0ff', statMult: 1.4,  skills: ['m_tackle', 'm_bite', 'm_spit'] },
+    { id: 'ghost_ice',   name: '얼음 유령',     kind: 'ghost',    tint: '#a0d8ff', statMult: 1.55, skills: ['m_tackle', 'm_curse', 'm_spit'] },
+    { id: 'golem_glacier',name: '빙하 골렘',    kind: 'golem',    tint: '#6bb5e8', statMult: 1.9,  miniBoss: true, scale: 1.2,
+      skills: ['m_tackle', 'm_harden', 'm_slam'] },
+  ],
+  ruins: [
+    { id: 'imp_sand',    name: '모래 임프',     kind: 'imp',      tint: '#d8b06b', statMult: 1.6,  skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'golem_ruin',  name: '유적 골렘',     kind: 'golem',    tint: '#b09a6b', statMult: 1.75, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'mush_cursed', name: '저주받은 버섯', kind: 'mushroom', tint: '#9a6bd8', statMult: 1.65, skills: ['m_tackle', 'm_spore', 'm_poison'] },
+    { id: 'dragon_ancient',name: '고대 수호룡', kind: 'dragon',   tint: '#d8c04a', statMult: 2.1,  miniBoss: true, scale: 1.25,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  abyss: [
+    { id: 'slime_deep',  name: '심해 슬라임',   kind: 'slime',    tint: '#2b6bd8', statMult: 1.75, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'bat_abyss',   name: '심연 박쥐',     kind: 'bat',      tint: '#4a4ad8', statMult: 1.65, skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'ghost_trench',name: '해구 유령',     kind: 'ghost',    tint: '#2bd8d8', statMult: 1.8,  skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'golem_deep',  name: '심해 골렘',     kind: 'golem',    tint: '#2b4a9a', statMult: 2.2,  miniBoss: true, scale: 1.25,
+      skills: ['m_tackle', 'm_harden', 'm_slam'] },
+  ],
+  sky: [
+    { id: 'slime_cloud', name: '구름 슬라임',   kind: 'slime',    tint: '#e8e8ff', statMult: 1.9,  skills: ['m_tackle', 'm_spit'] },
+    { id: 'imp_storm',   name: '폭풍 임프',     kind: 'imp',      tint: '#7a9aff', statMult: 2.0,  skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'ghost_sky',   name: '하늘 유령',     kind: 'ghost',    tint: '#c9e8ff', statMult: 1.95, skills: ['m_tackle', 'm_curse', 'm_spit'] },
+    { id: 'dragon_wyvern',name: '창공의 와이번', kind: 'dragon',  tint: '#6bc9ff', statMult: 2.5,  boss: true, scale: 1.4,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  rift: [
+    { id: 'imp_rift',    name: '균열 임프',     kind: 'imp',      tint: '#d84aff', statMult: 2.1,  skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'mush_warp',   name: '왜곡 버섯',     kind: 'mushroom', tint: '#ff4ad8', statMult: 2.05, skills: ['m_tackle', 'm_spore', 'm_poison'] },
+    { id: 'ghost_void',  name: '공허 유령',     kind: 'ghost',    tint: '#8a2bff', statMult: 2.2,  skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'dragon_devourer',name: '차원 포식자', kind: 'dragon',  tint: '#b02bff', statMult: 2.7,  boss: true, scale: 1.45,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  divine: [
+    { id: 'golem_holy',  name: '신성 골렘',     kind: 'golem',    tint: '#ffe89a', statMult: 2.3,  skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'ghost_celest',name: '천상 유령',     kind: 'ghost',    tint: '#fff0c9', statMult: 2.2,  skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'imp_light',   name: '빛의 임프',     kind: 'imp',      tint: '#ffd84a', statMult: 2.25, skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'dragon_seraph',name: '신수 세라핌',  kind: 'dragon',   tint: '#ffe86b', statMult: 2.9,  boss: true, scale: 1.5,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  origin: [
+    { id: 'slime_primal',name: '태초 슬라임',   kind: 'slime',    tint: '#ff6bb5', statMult: 2.45, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'golem_primal',name: '원시 골렘',     kind: 'golem',    tint: '#ff9a4a', statMult: 2.6,  skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'ghost_chaos', name: '혼돈 유령',     kind: 'ghost',    tint: '#ff4a6b', statMult: 2.5,  skills: ['m_tackle', 'm_curse', 'm_burn', 'm_poison'] },
+    { id: 'dragon_god',  name: '태초의 용신',   kind: 'dragon',   tint: '#ff2b4a', statMult: 3.3,  boss: true, scale: 1.6,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   /* 모든 지역 공통 희귀 출현 (5%) */
@@ -209,17 +309,18 @@ DATA.rarities = [
   { id: 'legend',   name: '전설', color: 'legend',   weight: 2,  statMult: 2.8,  subOpts: 4 },
 ];
 
+/* 장비 티어: 아이템 레벨 20당 1티어, 총 10티어 (Lv.200 대응) */
 DATA.equipTypes = [
   { slot: 'weapon', name: '무기', icon: '⚔️', mainStat: 'atk',
-    names: ['낡은 검', '강철 검', '기사단 검', '용살자의 검', '별빛 대검'] },
+    names: ['낡은 검', '강철 검', '기사단 검', '용살자의 검', '별빛 대검', '서리 파멸검', '고대 신검', '심연의 대검', '천공의 성검', '태초의 신검'] },
   { slot: 'armor', name: '갑옷', icon: '🥋', mainStat: 'def',
-    names: ['천 옷', '가죽 갑옷', '사슬 갑옷', '판금 갑옷', '용비늘 갑옷'] },
+    names: ['천 옷', '가죽 갑옷', '사슬 갑옷', '판금 갑옷', '용비늘 갑옷', '서리 강철갑', '고대 유물갑주', '심해 비늘갑', '천상의 갑주', '태초의 성갑'] },
   { slot: 'helmet', name: '투구', icon: '🪖', mainStat: 'hp',
-    names: ['천 두건', '가죽 모자', '강철 투구', '수호자의 투구', '용왕의 관'] },
+    names: ['천 두건', '가죽 모자', '강철 투구', '수호자의 투구', '용왕의 관', '설원의 왕관', '고대의 면류관', '심연의 투구', '천공의 관', '태초의 왕관'] },
   { slot: 'gloves', name: '장갑', icon: '🧤', mainStat: 'atk',
-    names: ['천 장갑', '가죽 장갑', '강철 건틀릿', '맹공의 장갑', '패왕의 손아귀'] },
+    names: ['천 장갑', '가죽 장갑', '강철 건틀릿', '맹공의 장갑', '패왕의 손아귀', '서리 손톱', '고대의 권갑', '심해의 손아귀', '뇌신의 건틀릿', '태초의 주먹'] },
   { slot: 'accessory', name: '장신구', icon: '💍', mainStat: 'hp',
-    names: ['나무 목걸이', '은 반지', '수정 목걸이', '마력의 귀걸이', '왕의 인장'] },
+    names: ['나무 목걸이', '은 반지', '수정 목걸이', '마력의 귀걸이', '왕의 인장', '서리 부적', '고대의 성물', '심해의 진주', '천상의 성표', '태초의 심장'] },
 ];
 
 /* 부가 옵션 풀: [스탯, 최소, 최대] */
@@ -299,38 +400,105 @@ DATA.dailyDungeons = [
 ];
 DATA.dailyLoginReward = { gems: 30, gold: 200 };
 
-/* ── 업적 ── */
-DATA.achievements = [
-  { id: 'a_kill10',    name: '첫 사냥꾼',     icon: '⚔️', desc: '몬스터 10마리 처치',      check: s => s.kills >= 10,   reward: 20 },
-  { id: 'a_kill100',   name: '백전노장',      icon: '🗡️', desc: '몬스터 100마리 처치',     check: s => s.kills >= 100,  reward: 50 },
-  { id: 'a_kill1000',  name: '학살자',        icon: '💀', desc: '몬스터 1,000마리 처치',   check: s => s.kills >= 1000, reward: 150 },
-  { id: 'a_tower10',   name: '탑의 도전자',   icon: '🗼', desc: '무한의 탑 10층 돌파',     check: s => s.bestFloor >= 10, reward: 30 },
-  { id: 'a_tower25',   name: '탑의 정복자',   icon: '🏯', desc: '무한의 탑 25층 돌파',     check: s => s.bestFloor >= 25, reward: 80 },
-  { id: 'a_tower50',   name: '하늘에 닿은 자', icon: '☁️', desc: '무한의 탑 50층 돌파',    check: s => s.bestFloor >= 50, reward: 200 },
-  { id: 'a_enhance10', name: '대장장이',      icon: '⚒️', desc: '장비를 +10까지 강화',     check: s => s.counters.maxEnhance >= 10, reward: 40 },
-  { id: 'a_enhance15', name: '명장',          icon: '🔨', desc: '장비를 +15까지 강화',     check: s => s.counters.maxEnhance >= 15, reward: 100 },
-  { id: 'a_enhance20', name: '신의 대장장이', icon: '✨', desc: '장비를 +20까지 강화',     check: s => s.counters.maxEnhance >= 20, reward: 300 },
-  { id: 'a_gacha10',   name: '첫 소환',       icon: '🎰', desc: '뽑기 10회',               check: s => s.counters.gachaCount >= 10, reward: 20 },
-  { id: 'a_gacha100',  name: '소환 중독',     icon: '🎲', desc: '뽑기 100회',              check: s => s.counters.gachaCount >= 100, reward: 100 },
-  { id: 'a_legend',    name: '전설의 시작',   icon: '🌟', desc: '전설 장비 획득',          check: s => s.counters.legendOwned >= 1, reward: 60 },
-  { id: 'a_lv40',      name: '베테랑',        icon: '🎖️', desc: '레벨 40 달성',            check: s => s.level >= 40 || s.rebirths > 0, reward: 50 },
-  { id: 'a_rebirth1',  name: '두 번째 삶',    icon: '♻️', desc: '환생 1회',                check: s => s.rebirths >= 1, reward: 100 },
-  { id: 'a_rebirth3',  name: '윤회의 초월자', icon: '🌀', desc: '환생 3회',                check: s => s.rebirths >= 3, reward: 300 },
-  { id: 'a_codex',     name: '몬스터 박사',   icon: '📚', desc: '도감 15종 등록',          check: s => Object.keys(s.codex).length >= 15, reward: 120 },
-  { id: 'a_gold10k',   name: '큰손',          icon: '💰', desc: '골드 10,000 보유',        check: s => s.gold >= 10000, reward: 50 },
-  { id: 'a_petmax',    name: '단짝',          icon: '🐾', desc: '펫 레벨 5 달성',          check: s => Object.values(s.pets).some(p => p.level >= 5), reward: 80 },
-];
+/* ── 업적 (총 100종 이상, 카테고리별 자동 생성) ── */
+DATA.achievements = [];
+(() => {
+  const A = DATA.achievements;
+  const add = (id, cat, name, icon, desc, check, reward) => A.push({ id, cat, name, icon, desc, check, reward });
 
-/* 상점 */
+  /* 전투 — 총 처치 (7) */
+  [[10, '첫 사냥꾼', 20], [100, '백전노장', 50], [500, '사냥 전문가', 100], [1000, '학살자', 150],
+   [5000, '전장의 지배자', 300], [10000, '만 마리의 전설', 500], [50000, '멸종의 화신', 1000]]
+    .forEach(([n, name, r]) => add(`a_kill${n}`, '전투', name, '⚔️', `몬스터 ${n.toLocaleString()}마리 처치`, s => s.kills >= n, r));
+
+  /* 무한의 탑 (8) */
+  [[10, '탑의 도전자', 30], [25, '탑의 정복자', 80], [50, '하늘에 닿은 자', 200], [75, '구름 위의 등반가', 300],
+   [100, '백층의 왕', 500], [150, '천공 정복자', 700], [200, '탑의 신화', 1000], [300, '무한을 걷는 자', 2000]]
+    .forEach(([n, name, r]) => add(`a_tower${n}`, '탑', name, '🗼', `무한의 탑 ${n}층 돌파`, s => s.bestFloor >= n, r));
+
+  /* 강화 (4) */
+  [[10, '대장장이', 40], [15, '명장', 100], [18, '전설의 명장', 200], [20, '신의 대장장이', 400]]
+    .forEach(([n, name, r]) => add(`a_enhance${n}`, '강화', name, '⚒️', `장비를 +${n}까지 강화`, s => s.counters.maxEnhance >= n, r));
+
+  /* 뽑기 (5) */
+  [[10, '첫 소환', 20], [100, '소환 중독', 100], [300, '제단의 단골', 200], [500, '운명 개척자', 350], [1000, '천 번의 기도', 600]]
+    .forEach(([n, name, r]) => add(`a_gacha${n}`, '뽑기', name, '🎰', `뽑기 ${n.toLocaleString()}회`, s => s.counters.gachaCount >= n, r));
+
+  /* 환생 (5) */
+  [[1, '두 번째 삶', 100], [3, '윤회의 초월자', 300], [5, '다섯 번째 여정', 500], [10, '영겁의 순례자', 800], [20, '시간을 초월한 자', 1500]]
+    .forEach(([n, name, r]) => add(`a_rebirth${n}`, '환생', name, '♻️', `환생 ${n}회`, s => s.rebirths >= n, r));
+
+  /* 레벨 (5) */
+  [[40, '베테랑', 50], [80, '역전의 용사', 120], [120, '초인', 250], [160, '반신', 400], [200, '정점에 선 자', 800]]
+    .forEach(([n, name, r]) => add(`a_lv${n}`, '성장', name, '🎖️', `레벨 ${n} 달성`, s => s.level >= n || (n <= 40 && s.rebirths > 0), r));
+
+  /* 골드 (4) */
+  [[10000, '큰손', 50], [100000, '갑부', 150], [1000000, '백만장자', 400], [10000000, '골드 드래곤', 1000]]
+    .forEach(([n, name, r]) => add(`a_gold${n}`, '재화', name, '💰', `골드 ${n.toLocaleString()} 보유`, s => s.gold >= n, r));
+
+  /* 펫 (5) */
+  add('a_pet5',    '펫', '동물 친구',   '🐾', '펫 5종 보유',        s => Object.keys(s.pets).length >= 5, 80);
+  add('a_pet10',   '펫', '펫 수집가',   '🐾', '펫 10종 보유',       s => Object.keys(s.pets).length >= 10, 200);
+  add('a_pet13',   '펫', '모든 생명의 벗', '🐾', '펫 13종 모두 보유', s => Object.keys(s.pets).length >= 13, 500);
+  add('a_petlv5',  '펫', '단짝',        '🐾', '펫 레벨 5 달성',     s => Object.values(s.pets).some(p => p.level >= 5), 80);
+  add('a_petlv10', '펫', '영혼의 동반자', '🐾', '펫 레벨 10 달성',  s => Object.values(s.pets).some(p => p.level >= 10), 300);
+
+  /* 장비 (4) */
+  [[1, '전설의 시작', 60], [5, '전설 수집가', 200], [10, '전설 도서관', 400], [30, '신화의 주인', 1000]]
+    .forEach(([n, name, r]) => add(`a_legend${n}`, '장비', name, '🌟', `전설 장비 ${n}개 획득 (누적)`, s => s.counters.legendOwned >= n, r));
+
+  /* 스킬 강화 (4) */
+  const skillLvSum = s => Object.values(s.skillLevels || {}).reduce((a, b) => a + b, 0);
+  [[50, '수련생', 100], [150, '숙련자', 250], [300, '무술 종사', 500]]
+    .forEach(([n, name, r]) => add(`a_skillsum${n}`, '스킬', name, '📖', `액티브 스킬 레벨 합계 ${n}`, s => skillLvSum(s) >= n, r));
+  add('a_skill100', '스킬', '극의에 달한 자', '📖', '스킬 하나를 Lv.100 달성', s => Object.values(s.skillLevels || {}).some(v => v >= 100), 800);
+
+  /* 패시브 (3) */
+  const passiveLvSum = s => Object.values(s.passiveLevels || {}).reduce((a, b) => a + b, 0);
+  [[100, '기초 단련', 100], [500, '심신 수양', 300], [1500, '만능의 경지', 800]]
+    .forEach(([n, name, r]) => add(`a_passum${n}`, '패시브', name, '🌟', `패시브 레벨 합계 ${n}`, s => passiveLvSum(s) >= n, r));
+
+  /* 도감 발견 (6) */
+  const zoneMonsterIds = [];
+  for (const z of DATA.zones) for (const m of DATA.monsters[z.id]) zoneMonsterIds.push(m.id);
+  zoneMonsterIds.push(DATA.monsters.golden.id);
+  const discovered = s => zoneMonsterIds.filter(id => s.codex[id]).length;
+  [[5, '견습 학자', 30], [10, '도감 수집가', 60], [20, '몬스터 박사', 120], [30, '생태 연구가', 250], [40, '대도감의 주인', 500], [zoneMonsterIds.length, '모든 것을 아는 자', 1000]]
+    .forEach(([n, name, r]) => add(`a_codex${n}`, '도감', name, '📚', `도감 ${n}종 등록`, s => discovered(s) >= n, r));
+
+  /* 도감 정복 — 몬스터별 50마리 처치 (49) */
+  const allMon = [];
+  for (const z of DATA.zones) for (const m of DATA.monsters[z.id]) allMon.push({ ...m, zoneName: z.name });
+  allMon.push({ ...DATA.monsters.golden, zoneName: '???' });
+  for (const m of allMon) {
+    const reward = m.golden ? 150 : m.boss ? 100 : m.miniBoss ? 60 : 25;
+    add(`a_hunt_${m.id}`, '도감 정복', `${m.name} 헌터`, '🎯', `${m.name} 50마리 처치 (${m.zoneName})`,
+      s => (s.codex[m.id] || 0) >= 50, reward);
+  }
+
+  /* 기타 (3) */
+  add('a_death10',  '기타', '칠전팔기', '💀', '10번 쓰러져도 다시 일어서기', s => s.deaths >= 10, 60);
+  add('a_suggest1', '기타', '소통왕', '📮', '운영자에게 건의사항 보내기', s => (s.counters.suggestions || 0) >= 1, 30);
+  add('a_daily30',  '기타', '성실왕', '📅', '일일 던전 30회 클리어 (누적)', s => (s.counters.dailyRuns || 0) >= 30, 150);
+})();
+
+/* 상점 (currency: 'gold' 기본 / 'gems') */
 DATA.shopItems = [
   { id: 'potion_hp', name: 'HP 물약', icon: '🧪', price: 30,  desc: 'HP를 최대치의 40% 회복한다. 전투 중 사용 가능.' },
   { id: 'potion_mp', name: 'MP 물약', icon: '🔮', price: 35,  desc: 'MP를 최대치의 50% 회복한다. 전투 중 사용 가능.' },
   { id: 'stone',     name: '강화석', icon: '💎', price: 120, desc: '장비 강화에 필요한 신비한 돌.' },
   { id: 'gem_pack',  name: '다이아 주머니', icon: '💠', price: 1500, desc: '다이아 40개가 든 주머니. 골드 부자를 위한 상품.' },
+  { id: 'tome',      name: '스킬의 서', icon: '📖', price: 30, currency: 'gems', desc: '액티브 스킬 강화에 필요한 고대의 책. 보스와 탑에서도 드랍된다.' },
 ];
 
 /* 레벨업 필요 경험치 */
 DATA.expForLevel = lv => Math.floor(28 * Math.pow(lv, 1.55));
+
+/* ── 고레벨 스케일 곡선 (Lv.200 대응) ──
+   저레벨(~30)에서는 거의 1, 고레벨에서 가파르게 상승해
+   스킬 100레벨·장비 옵션·패시브를 갖춘 캐릭터와 균형을 맞춘다. */
+DATA.monsterCurve = lv => 1 + Math.pow(lv / 60, 1.6);
+DATA.rewardCurve  = lv => 1 + Math.pow(lv / 90, 1.4);
 
 /* 물약 회복량 */
 DATA.potionHeal = { hp: 0.40, mp: 0.50 };

@@ -679,6 +679,55 @@ canvas { image-rendering: pixelated; }
   box-shadow: 0 0 6px rgba(229,72,77,.8);
 }
 
+/* ═══════════ v3: 200레벨 확장 ═══════════ */
+
+/* 신규 사냥터 배경 */
+#stage-bg.zone-frost  { background: linear-gradient(180deg, #0d1a2b 0%, #1f3d5e 45%, #4a7aa0 75%, #2b4a6b 100%); }
+#stage-bg.zone-ruins  { background: linear-gradient(180deg, #1f1a0d 0%, #3d3020 45%, #6b5535 75%, #40351f 100%); }
+#stage-bg.zone-abyss  { background: linear-gradient(180deg, #050d1f 0%, #0a1a3d 45%, #16305e 75%, #0d2040 100%); }
+#stage-bg.zone-sky    { background: linear-gradient(180deg, #16204a 0%, #2b3d7a 45%, #5e7ad8 75%, #3d4a9a 100%); }
+#stage-bg.zone-rift   { background: linear-gradient(180deg, #14051f 0%, #2b0a3d 45%, #6b16a0 75%, #3d0d5e 100%); }
+#stage-bg.zone-divine { background: linear-gradient(180deg, #201a05 0%, #4a3d16 45%, #9a8035 75%, #5e4a20 100%); }
+#stage-bg.zone-origin { background: linear-gradient(180deg, #1f050a 0%, #3d0a16 45%, #8a1630 75%, #4a0d1f 100%); }
+
+/* 눈 파티클 */
+.pt-snow .particle { width: 5px; height: 5px; background: #fff; border-radius: 50%; opacity: .9;
+  box-shadow: 0 0 6px rgba(255,255,255,.7); }
+
+/* 스킬 강화 UI */
+.skill-upgrade { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; min-width: 76px; }
+.skill-cost { font-size: 9px; color: var(--text-dim); text-align: center; line-height: 1.5; }
+.passive-btns { display: flex; gap: 6px; margin-top: 8px; }
+.passive-btns .btn { flex: 1; }
+
+/* 일괄판매 */
+.bulk-sell-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+
+/* 업적 카테고리 */
+.ach-cat { margin-bottom: 10px; }
+.ach-cat-head {
+  cursor: pointer; font-size: 14px; color: var(--gold);
+  padding: 10px 14px; border: 2px solid var(--line); border-radius: 10px;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  list-style: none; user-select: none;
+}
+.ach-cat-head::-webkit-details-marker { display: none; }
+.ach-cat-head::before { content: '▸ '; color: var(--text-dim); }
+.ach-cat[open] .ach-cat-head::before { content: '▾ '; }
+.ach-cat .ach-list { margin-top: 8px; padding-left: 6px; }
+
+/* 건의사항 */
+.suggest-card { max-width: 640px; }
+#suggest-text {
+  width: 100%; font-family: inherit; font-size: 13px; line-height: 1.7;
+  background: rgba(0,0,0,.4); color: var(--text);
+  border: 2px solid var(--line); border-radius: 10px;
+  padding: 12px; resize: vertical; min-height: 120px;
+}
+#suggest-text:focus { outline: none; border-color: var(--gold-dark); }
+#suggest-text:disabled { opacity: .4; }
+.suggest-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+
 #screen-auth {
   display: flex;
   align-items: center;

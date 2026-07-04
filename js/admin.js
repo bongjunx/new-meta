@@ -8,6 +8,7 @@ const AdminPage = {
     });
     document.getElementById('admin-refresh').addEventListener('click', () => this.loadAll());
     document.getElementById('admin-log-refresh').addEventListener('click', () => this.loadLogs());
+    document.getElementById('admin-suggestions-refresh').addEventListener('click', () => this.loadSuggestions());
     document.getElementById('admin-logout').addEventListener('click', () => {
       Auth.clearSession();
       this.showLogin();
@@ -70,7 +71,28 @@ const AdminPage = {
   },
 
   async loadAll() {
-    await Promise.all([this.loadSummary(), this.loadUsers(), this.loadLogs()]);
+    await Promise.all([this.loadSummary(), this.loadUsers(), this.loadLogs(), this.loadSuggestions()]);
+  },
+
+  async loadSuggestions() {
+    const wrap = document.getElementById('admin-suggestions');
+    try {
+      const data = await Auth.request('/api/admin/suggestions');
+      const list = data.suggestions || [];
+      if (!list.length) {
+        wrap.textContent = '아직 도착한 건의사항이 없습니다.';
+        return;
+      }
+      wrap.innerHTML = list.map((sg) => `
+        <div class="admin-log-row admin-suggestion-row">
+          <span>${this.formatDate(sg.createdAt)}</span>
+          <b>${this.escape(sg.username)}</b>
+          <span class="admin-suggestion-content">${this.escape(sg.content)}</span>
+        </div>
+      `).join('');
+    } catch (err) {
+      wrap.textContent = err.message || '건의사항을 불러오지 못했습니다.';
+    }
   },
 
   async loadSummary() {

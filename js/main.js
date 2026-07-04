@@ -129,7 +129,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   setAuthMode('login');
   const user = await Auth.me();
   if (!user) {
-    Auth.show();
+    // 서버가 아예 없으면(정적 실행) 오프라인 모드로 진행
+    let serverUp = false;
+    try {
+      const res = await fetch('/api/health');
+      serverUp = res.ok;
+    } catch { /* 서버 없음 */ }
+    if (serverUp) {
+      Auth.show();
+      return;
+    }
+    Auth.hide();
+    if (Game.load()) {
+      UI.enterGame();
+    } else {
+      UI.renderClassSelect();
+      UI.showScreen('select');
+    }
+    UI.toast('⚠️ 서버에 연결할 수 없어 오프라인 모드로 실행합니다.');
     return;
   }
 

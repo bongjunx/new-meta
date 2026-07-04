@@ -94,6 +94,15 @@ async function initDb() {
   `);
   await pool.query('CREATE INDEX IF NOT EXISTS user_logs_user_id_idx ON user_logs(user_id)');
   await pool.query('CREATE INDEX IF NOT EXISTS user_logs_created_at_idx ON user_logs(created_at DESC)');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id BIGSERIAL PRIMARY KEY,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS suggestions_created_at_idx ON suggestions(created_at DESC)');
 }
 
 async function auth(req, res, next) {
@@ -227,6 +236,49 @@ app.delete('/api/save', auth, async (req, res) => {
   await pool.query('DELETE FROM game_saves WHERE user_id = $1', [req.user.id]);
   await logUserEvent(req.user.id, 'save:delete');
   res.json({ ok: true });
+});
+
+/* ── 건의사항 (유저 → 운영자 단방향) ── */
+app.post('/api/suggestions', auth, async (req, res) => {
+  const content = String(req.body.content || '').trim();
+  if (content.length < 4) return res.status(400).json({ error: 'suggestion must be at least 4 characters' });
+  if (content.length > 1000) return res.status(400).json({ error: 'suggestion must be at most 1000 characters' });
+
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS cnt FROM suggestions
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'`,
+    [req.user.id],
+  );
+  if (rows[0].cnt >= 10) {
+    return res.status(429).json({ error: 'you can send up to 10 suggestions per day' });
+  }
+
+  await pool.query(
+    'INSERT INTO suggestions (user_id, content) VALUES ($1, $2)',
+    [req.user.id, content],
+  );
+  await logUserEvent(req.user.id, 'suggestion:create', { length: content.length });
+  res.status(201).json({ ok: true });
+});
+
+app.get('/api/admin/suggestions', auth, requireAdmin, async (req, res) => {
+  const limit = Math.max(1, Math.min(500, Number(req.query.limit) || 200));
+  const { rows } = await pool.query(
+    `SELECT s.id, s.content, s.created_at, u.username
+       FROM suggestions s
+       LEFT JOIN users u ON u.id = s.user_id
+      ORDER BY s.created_at DESC
+      LIMIT $1`,
+    [limit],
+  );
+  res.json({
+    suggestions: rows.map((row) => ({
+      id: row.id,
+      username: row.username || 'deleted',
+      content: row.content,
+      createdAt: row.created_at,
+    })),
+  });
 });
 
 app.get('/api/admin/users', auth, requireAdmin, async (_req, res) => {

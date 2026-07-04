@@ -46,7 +46,7 @@ const Battle = {
       mp: Game.state.curMp,
       shield: 0, stunned: 0, dodge: 0,
       effects: [], dots: [],
-      skills: cls.skills.map(id => ({ id, ...DATA.skills[id], curCd: 0 })),
+      skills: cls.skills.map(id => Game.effectiveSkill(id)),
       goldEarnedInBattle: 0,
     };
     const m = this.monster;
@@ -114,7 +114,11 @@ const Battle = {
   /* ══════════ 데미지 처리 ══════════ */
   calcDamage(attacker, defender, mult, opts = {}) {
     const atk = this.effStat(attacker, 'atk');
-    const def = this.effStat(defender, 'def');
+    let def = this.effStat(defender, 'def');
+    // 관통 패시브 (플레이어 공격 시)
+    if (attacker.isPlayer && attacker.mods.penetration > 0) {
+      def *= 1 - Math.min(90, attacker.mods.penetration) / 100;
+    }
     let dmg = atk * mult * (0.9 + Math.random() * 0.2) - def * 0.8;
     dmg = Math.max(1, dmg);
     const critRate = this.effStat(attacker, 'critRate') + (opts.critBonus || 0);
@@ -128,6 +132,10 @@ const Battle = {
     if (target.dodge > 0 && !opts.noDodge) {
       this.floatNum(target, 'MISS', 'miss');
       return { dealt: 0, dodged: true };
+    }
+    // 인내 패시브 (플레이어 피격 시 피해 감소)
+    if (target.isPlayer && target.mods.dmgReduce > 0) {
+      amount = Math.max(1, Math.round(amount * (1 - Math.min(80, target.mods.dmgReduce) / 100)));
     }
     let remain = amount;
     if (target.shield > 0) {
@@ -286,7 +294,8 @@ const Battle = {
     // 자기 효과
     if (sk.selfHealPct) this.heal(p, Math.round(this.maxHp(p) * sk.selfHealPct / 100));
     if (sk.shieldPct) {
-      p.shield += Math.round(this.maxHp(p) * sk.shieldPct / 100);
+      const boost = 1 + (p.mods.shieldBoost || 0) / 100;
+      p.shield += Math.round(this.maxHp(p) * sk.shieldPct / 100 * boost);
       this.log(`🛡️ 보호막 ${p.shield} 형성!`, 'player');
     }
     if (sk.buff) this.applyEffect(p, 'buff', buffOverride || sk.buff, sk.icon);
@@ -304,11 +313,12 @@ const Battle = {
     const p = this.player;
     if (Game.state.potions[type] <= 0) { UI.toast('물약이 없습니다!'); return false; }
     Game.state.potions[type]--;
+    const potBoost = 1 + (p.mods.potionPct || 0) / 100;
     if (type === 'hp') {
-      this.heal(p, Math.round(this.maxHp(p) * DATA.potionHeal.hp));
+      this.heal(p, Math.round(this.maxHp(p) * DATA.potionHeal.hp * potBoost));
       this.log('🧪 HP 물약을 마셨다!', 'player');
     } else {
-      const amt = Math.round(this.maxMp(p) * DATA.potionHeal.mp);
+      const amt = Math.round(this.maxMp(p) * DATA.potionHeal.mp * potBoost);
       p.mp = Math.min(this.maxMp(p), p.mp + amt);
       this.floatNum(p, `+${amt} MP`, 'mpnum');
       this.log('🔮 MP 물약을 마셨다!', 'player');
@@ -389,7 +399,8 @@ const Battle = {
   },
 
   applyDot(unit, spec, source) {
-    const dmg = Math.max(1, Math.round(this.effStat(source, 'atk') * spec.pctAtk / 100));
+    const dotBoost = source.isPlayer ? 1 + (source.mods.dotPct || 0) / 100 : 1;
+    const dmg = Math.max(1, Math.round(this.effStat(source, 'atk') * spec.pctAtk / 100 * dotBoost));
     unit.dots = unit.dots.filter(d => d.name !== spec.name);
     unit.dots.push({ name: spec.name, icon: spec.icon, dmg, turns: spec.turns });
     this.log(`${spec.icon} ${unit.name} 에게 ${spec.name} (${spec.turns}턴, 턴당 ${dmg})`, 'sys');
@@ -431,6 +442,12 @@ const Battle = {
       } else if (d.type === 'potion_hp') { Game.state.potions.hp++; dropLines.push('🧪 HP 물약'); }
       else if (d.type === 'potion_mp') { Game.state.potions.mp++; dropLines.push('🔮 MP 물약'); }
       else if (d.type === 'stone') { Game.state.stones += d.count; dropLines.push(`💎 강화석 ×${d.count}`); }
+      else if (d.type === 'tome') { Game.state.tomes += d.count; dropLines.push(`<span class="drop-shiny" style="color:var(--gold)">📖 스킬의 서 ×${d.count}</span>`); }
+    }
+
+    // 학살자 패시브: 처치 시 회복
+    if (this.player.mods.killHealPct > 0 && this.player.hp > 0) {
+      this.heal(this.player, Math.round(this.maxHp(this.player) * this.player.mods.killHealPct / 100));
     }
 
     // 전투 종료 시 HP/MP 저장

@@ -266,6 +266,16 @@
   word-break: break-word;
 }
 
+.admin-suggestion-row {
+  grid-template-columns: 150px 120px 1fr;
+}
+
+.admin-suggestion-content {
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
 @media (max-width: 880px) {
   .admin-header,
   .admin-section-head {
