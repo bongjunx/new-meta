@@ -269,6 +269,67 @@ canvas { image-rendering: pixelated; }
 .forge-flash { animation: forgeFlash .5s; }
 @keyframes forgeFlash { 0% { box-shadow: 0 0 0 rgba(240,195,78,0);} 30% { box-shadow: 0 0 40px rgba(240,195,78,.8);} 100% { box-shadow: 0 0 0 rgba(240,195,78,0);} }
 
+/* 제작 */
+.craft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.craft-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.craft-controls select {
+  min-width: 0;
+  background: #151322;
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.mat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.mat-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px;
+  color: var(--text);
+  background: rgba(255,255,255,.035);
+}
+.mat-chip.empty {
+  color: var(--text-dim);
+  opacity: .65;
+}
+.mat-chip b { color: var(--gold); }
+.rune-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.rune-info {
+  display: grid;
+  grid-template-columns: minmax(110px, .8fr) 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: 6px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.rune-info b,
+.rune-opt { color: var(--exp); }
+@media (max-width: 720px) {
+  .rune-info { grid-template-columns: 1fr; }
+}
+
 /* 상점 */
 .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .shop-item { display: flex; flex-direction: column; gap: 6px; }

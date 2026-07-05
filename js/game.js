@@ -36,6 +36,9 @@ const Game = {
       passiveLevels: {},        // passiveId → level (최대 100)
       skillLevels: {},          // skillId → level (최대 100, 기본 1)
       skillAwakened: {},        // skillId → true (각성 완료)
+      materials: {},            // 광석/보석/몬스터 재료: matId → count
+      runes: {},                // 룬 보유: runeId → count
+      skillRunes: {},           // skillId → [runeId, ...] (최대 2)
       potions: { hp: 3, mp: 2 },
       inventory: [],
       equipped: { weapon: null, armor: null, helmet: null, gloves: null, accessory: null },
@@ -52,7 +55,8 @@ const Game = {
       pity: { equip: 0, pet: 0 },
       codex: {},                // monsterId → kills
       achievementsClaimed: [],
-      counters: { gachaCount: 0, maxEnhance: 0, legendOwned: 0, suggestions: 0, dailyRuns: 0 },
+      counters: { gachaCount: 0, maxEnhance: 0, legendOwned: 0, suggestions: 0, dailyRuns: 0,
+                  crafted: 0, combined: 0, runesFused: 0 },
       daily: { date: '', loginClaimed: false, runs: {} },
     };
   },
@@ -70,6 +74,12 @@ const Game = {
     const d = this.defaultState(this.state.classId, this.state.name);
     for (const [k, v] of Object.entries(d)) {
       if (this.state[k] === undefined) this.state[k] = v;
+    }
+    for (const key of ['materials', 'runes', 'skillRunes', 'skillLevels', 'skillAwakened', 'passiveLevels', 'pets', 'codex']) {
+      if (!this.state[key] || typeof this.state[key] !== 'object' || Array.isArray(this.state[key])) this.state[key] = {};
+    }
+    if (!this.state.equipped || typeof this.state.equipped !== 'object' || Array.isArray(this.state.equipped)) {
+      this.state.equipped = { ...d.equipped };
     }
     for (const slot of Object.keys(d.equipped)) {
       if (this.state.equipped[slot] === undefined) this.state.equipped[slot] = null;
@@ -133,10 +143,10 @@ const Game = {
   },
 
   itemStats(item) {
-    const enhMult = 1 + item.enhance * DATA.enhanceBonusPerLevel;
+    const enhMult = 1 + (item.enhance || 0) * DATA.enhanceBonusPerLevel;
     const out = {};
     out[item.mainStat] = Math.round(item.mainValue * enhMult);
-    for (const [stat, val] of item.subOpts) {
+    for (const [stat, val] of item.subOpts || []) {
       out[stat] = (out[stat] || 0) + Math.round(val * enhMult);
     }
     return out;
@@ -178,6 +188,14 @@ const Game = {
     for (const [k, v] of Object.entries(this.petMods())) {
       mods[k] = (mods[k] || 0) + v;
     }
+    // 장착 장비의 룬 각인 효과 합산
+    for (const item of this.equippedItems()) {
+      for (const runeId of item.runes || []) {
+        const rune = DATA.runeById(runeId);
+        if (!rune) continue;
+        for (const [k, v] of Object.entries(rune.equip)) mods[k] = (mods[k] || 0) + v;
+      }
+    }
     return mods;
   },
 
@@ -207,6 +225,28 @@ const Game = {
     if (sk.stunChance) sk.stunChance = Math.min(60, Math.round(sk.stunChance + (lv - 1) * 0.15));
     if (sk.goldGain) sk.goldGain = [Math.round(sk.goldGain[0] * pow), Math.round(sk.goldGain[1] * pow)];
     if (sk.mpRestorePct) sk.mpRestorePct = Math.round(sk.mpRestorePct * pow);
+
+    /* 합성된 룬 효과 적용 */
+    sk.runes = [...(this.state.skillRunes[skillId] || [])];
+    for (const runeId of sk.runes) {
+      const rune = DATA.runeById(runeId);
+      if (!rune) continue;
+      const r = rune.skill;
+      if (r.dmgPct && sk.dmgMult) sk.dmgMult *= 1 + r.dmgPct / 100;
+      if (r.critBonus) sk.critBonus = (sk.critBonus || 0) + r.critBonus;
+      if (r.cdReduce) sk.cd = Math.max(1, sk.cd - r.cdReduce);
+      if (r.mpCostPct) sk.mp = Math.max(1, Math.round(sk.mp * (1 + r.mpCostPct / 100)));
+      if (r.selfHealPct) sk.selfHealPct = (sk.selfHealPct || 0) + r.selfHealPct;
+      if (r.selfShieldPct) sk.shieldPct = (sk.shieldPct || 0) + r.selfShieldPct;
+      if (r.addDot) {
+        if (!sk.dot) sk.dot = { ...r.addDot };
+        else sk.extraDots = [...(sk.extraDots || []), { ...r.addDot }];
+      }
+      if (r.addDebuff) {
+        if (!sk.debuff) sk.debuff = { ...r.addDebuff };
+        else sk.extraDebuffs = [...(sk.extraDebuffs || []), { ...r.addDebuff }];
+      }
+    }
     return sk;
   },
 
@@ -404,6 +444,137 @@ const Game = {
     const t = this.totalStats();
     this.state.curHp = Math.min(this.state.curHp, t.hp);
     this.state.curMp = Math.min(this.state.curMp, t.mp);
+  },
+
+  /* ── 재료 ── */
+  addMaterial(id, n = 1) {
+    this.state.materials[id] = (this.state.materials[id] || 0) + n;
+  },
+  matCount(id) { return this.state.materials[id] || 0; },
+  runeCount(id) { return this.state.runes[id] || 0; },
+
+  /* ── 장비 제작: 광석 5 + 몬스터 재료 3 + 골드 (+보석 선택) ── */
+  craftCost() {
+    const ore = DATA.oreForLevel(this.state.level);
+    return { ore, oreCount: DATA.craft.oreCost, matCount: DATA.craft.matCost, gold: DATA.craft.goldCost(this.state.level) };
+  },
+
+  totalMonsterMats() {
+    return DATA.monsterMats.reduce((s, m) => s + this.matCount(m.id), 0);
+  },
+
+  craftEquipment(slot, gemId = null) {
+    const c = this.craftCost();
+    const type = DATA.equipTypes.find(t => t.slot === slot);
+    if (!type) return { ok: false, reason: 'slot' };
+    const gem = gemId ? DATA.craftGems.find(g => g.id === gemId) : null;
+    if (gemId && !gem) return { ok: false, reason: 'gem' };
+    if (this.matCount(c.ore.id) < c.oreCount) return { ok: false, reason: 'ore' };
+    if (this.totalMonsterMats() < c.matCount) return { ok: false, reason: 'mat' };
+    if (this.state.gold < c.gold) return { ok: false, reason: 'gold' };
+    if (gemId && this.matCount(gemId) < 1) return { ok: false, reason: 'gem' };
+
+    // 재료 소모 (몬스터 재료는 많이 가진 것부터)
+    this.state.materials[c.ore.id] -= c.oreCount;
+    let need = c.matCount;
+    const stacks = DATA.monsterMats
+      .map(m => ({ id: m.id, n: this.matCount(m.id) }))
+      .filter(x => x.n > 0).sort((a, b) => b.n - a.n);
+    for (const st of stacks) {
+      if (need <= 0) break;
+      const take = Math.min(st.n, need);
+      this.state.materials[st.id] -= take;
+      need -= take;
+    }
+    this.state.gold -= c.gold;
+    if (gemId) this.state.materials[gemId] -= 1;
+
+    // 등급 결정
+    const weights = gemId ? DATA.craft.rarityWeightsGem : DATA.craft.rarityWeights;
+    const roll = Math.random() * weights.reduce((s, w) => s + w[1], 0);
+    let acc = 0, rarity = weights[0][0];
+    for (const [r, w] of weights) { acc += w; if (roll < acc) { rarity = r; break; } }
+
+    // 특정 슬롯으로 생성
+    const item = this.rollEquipment(this.state.level, rarity);
+    const tier = Math.min(type.names.length - 1, Math.floor(this.state.level / 20));
+    item.slot = type.slot; item.typeName = type.name; item.icon = type.icon;
+    item.name = type.names[tier]; item.mainStat = type.mainStat;
+    const baseVal = { atk: 4 + this.state.level * 1.6, def: 3 + this.state.level * 1.3, hp: 15 + this.state.level * 6 }[type.mainStat];
+    const rar = DATA.rarities.find(r => r.id === rarity);
+    item.mainValue = Math.round(baseVal * rar.statMult * (0.95 + Math.random() * 0.15));
+    // 보석: 해당 스탯 부옵션 확정 (첫 슬롯 대체/추가)
+    if (gem) {
+      const pool = DATA.subOptionPool.find(p => p[0] === gem.stat);
+      const scale = 1 + this.state.level * 0.08;
+      const val = Math.round(this.rand(pool[1], pool[2]) * scale * 1.3); // 보석 보정 +30%
+      item.subOpts = [[gem.stat, val], ...item.subOpts.filter(o => o[0] !== gem.stat)].slice(0, Math.max(1, item.subOpts.length));
+    }
+    this.addItem(item);
+    this.state.counters.crafted = (this.state.counters.crafted || 0) + 1;
+    this.save();
+    return { ok: true, item };
+  },
+
+  /* ── 장비 조합: 동일 등급 3개 → 상위 등급 1개 ── */
+  combinableItems(rarity) {
+    const equippedUids = new Set(Object.values(this.state.equipped).filter(v => v != null));
+    return this.state.inventory.filter(i =>
+      i.rarity === rarity &&
+      !equippedUids.has(i.uid) &&
+      !(i.runes || []).length);
+  },
+
+  combineEquipment(rarity) {
+    const idx = this.rarityIndex(rarity);
+    if (idx < 0 || idx >= DATA.rarities.length - 1) return { ok: false, reason: 'rarity' };
+    const pool = this.combinableItems(rarity);
+    if (pool.length < DATA.craft.combineCount) return { ok: false, reason: 'count' };
+    const gold = DATA.craft.combineGold(this.state.level);
+    if (this.state.gold < gold) return { ok: false, reason: 'gold' };
+    // 강화 수치가 낮은 것부터 소모
+    const consume = [...pool].sort((a, b) => a.enhance - b.enhance || a.mainValue - b.mainValue)
+      .slice(0, DATA.craft.combineCount);
+    const uids = new Set(consume.map(i => i.uid));
+    this.state.inventory = this.state.inventory.filter(i => !uids.has(i.uid));
+    this.state.gold -= gold;
+    const nextRarity = DATA.rarities[idx + 1].id;
+    const item = this.rollEquipment(this.state.level, nextRarity);
+    this.addItem(item);
+    this.state.counters.combined = (this.state.counters.combined || 0) + 1;
+    this.save();
+    return { ok: true, item, consumed: consume.length };
+  },
+
+  /* ── 룬 합성 ── */
+  fuseRuneToItem(uid, runeId) {
+    if (!DATA.runeById(runeId)) return { ok: false, reason: 'rune' };
+    const item = this.state.inventory.find(i => i.uid === uid);
+    if (!item) return { ok: false, reason: 'item' };
+    if (!item.runes) item.runes = [];
+    if (item.runes.length >= DATA.runeSlotsPerItem) return { ok: false, reason: 'slots' };
+    if (item.runes.includes(runeId)) return { ok: false, reason: 'duplicate' };
+    if (this.runeCount(runeId) < 1) return { ok: false, reason: 'rune' };
+    this.state.runes[runeId]--;
+    item.runes.push(runeId);
+    this.state.counters.runesFused = (this.state.counters.runesFused || 0) + 1;
+    this.save();
+    return { ok: true, item };
+  },
+
+  fuseRuneToSkill(skillId, runeId) {
+    if (!DATA.runeById(runeId)) return { ok: false, reason: 'rune' };
+    const cls = DATA.classes[this.state.classId];
+    if (!DATA.skills[skillId] || !cls.skills.includes(skillId)) return { ok: false, reason: 'skill' };
+    if (!this.state.skillRunes[skillId]) this.state.skillRunes[skillId] = [];
+    if (this.state.skillRunes[skillId].length >= DATA.runeSlotsPerSkill) return { ok: false, reason: 'slots' };
+    if (this.state.skillRunes[skillId].includes(runeId)) return { ok: false, reason: 'duplicate' };
+    if (this.runeCount(runeId) < 1) return { ok: false, reason: 'rune' };
+    this.state.runes[runeId]--;
+    this.state.skillRunes[skillId].push(runeId);
+    this.state.counters.runesFused = (this.state.counters.runesFused || 0) + 1;
+    this.save();
+    return { ok: true };
   },
 
   /* ── 강화 ── */
@@ -729,6 +900,29 @@ const Game = {
       } else if (lv >= 250 && this.chance(35)) {
         drops.push({ type: 'awaken_stone', count: 1 });
       }
+    }
+
+    /* 제작 재료 드랍 */
+    // 광석 (레벨대별 티어)
+    if (this.chance(40)) {
+      const ore = DATA.oreForLevel(lv);
+      drops.push({ type: 'material', matId: ore.id, count: monster.boss ? this.rand(2, 4) : this.rand(1, 2) });
+    }
+    // 몬스터 재료 (종류별)
+    const matId = DATA.kindMaterial[monster.kind];
+    if (matId && this.chance(45)) {
+      drops.push({ type: 'material', matId, count: monster.boss ? this.rand(2, 3) : 1 });
+    }
+    // 보석 (황금 슬라임 확정, 보스 20%, 일반 2%)
+    const gemRate = monster.golden ? 100 : monster.boss ? 20 : 2;
+    if (this.chance(gemRate)) {
+      const gem = this.pick(DATA.craftGems);
+      drops.push({ type: 'material', matId: gem.id, count: monster.golden ? this.rand(1, 2) : 1 });
+    }
+    // 룬 (일반 5%, 보스 +15%p)
+    if (this.chance(5 + (monster.boss ? 15 : 0) + (monster.miniBoss ? 7 : 0))) {
+      const rune = this.pickWeighted(DATA.runes);
+      drops.push({ type: 'rune', runeId: rune.id, count: 1 });
     }
 
     return { exp: Math.round(exp), gold: Math.round(gold), gems, drops };

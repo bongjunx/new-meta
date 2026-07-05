@@ -273,7 +273,13 @@ const Battle = {
           this.log(`💫 ${m.name} 이(가) 기절했다!`, 'player');
         }
         if (sk.dot && m.hp > 0) this.applyDot(m, sk.dot, p);
+        for (const dot of sk.extraDots || []) {
+          if (m.hp > 0) this.applyDot(m, dot, p);
+        }
         if (sk.debuff && m.hp > 0) this.applyEffect(m, 'debuff', sk.debuff, sk.icon);
+        for (const debuff of sk.extraDebuffs || []) {
+          if (m.hp > 0) this.applyEffect(m, 'debuff', debuff, sk.icon);
+        }
         if (sk.goldGain) {
           const g = Game.rand(sk.goldGain[0], sk.goldGain[1]);
           p.goldEarnedInBattle += g;
@@ -444,6 +450,21 @@ const Battle = {
       else if (d.type === 'stone') { Game.state.stones += d.count; dropLines.push(`💎 강화석 ×${d.count}`); }
       else if (d.type === 'tome') { Game.state.tomes += d.count; dropLines.push(`<span class="drop-shiny" style="color:var(--gold)">📖 스킬의 서 ×${d.count}</span>`); }
       else if (d.type === 'awaken_stone') { Game.state.awakenStones += d.count; dropLines.push(`<span class="drop-shiny" style="color:var(--exp)">🌠 각성석 ×${d.count}</span>`); }
+      else if (d.type === 'material') {
+        Game.addMaterial(d.matId, d.count);
+        const def = DATA.ores.find(o => o.id === d.matId) || DATA.craftGems.find(g => g.id === d.matId) || DATA.monsterMats.find(m => m.id === d.matId);
+        if (def) {
+          const isGem = DATA.craftGems.some(g => g.id === d.matId);
+          dropLines.push(isGem
+            ? `<span class="drop-shiny" style="color:var(--mp)">${def.icon} ${def.name} ×${d.count}</span>`
+            : `${def.icon} ${def.name} ×${d.count}`);
+        }
+      }
+      else if (d.type === 'rune') {
+        Game.state.runes[d.runeId] = (Game.state.runes[d.runeId] || 0) + d.count;
+        const rune = DATA.runeById(d.runeId);
+        if (rune) dropLines.push(`<span class="drop-shiny" style="color:var(--exp)">${rune.icon} ${rune.name} ×${d.count}</span>`);
+      }
     }
 
     // 학살자 패시브: 처치 시 회복

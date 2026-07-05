@@ -448,7 +448,101 @@ DATA.equipTypes = [
             '별의 파편', '공허의 눈동자', '일식의 각인', '용신의 비늘', '창세의 인장'] },
 ];
 
-/* 부가 옵션 풀: [스탯, 최소, 최대] */
+/* ── 제작 재료 ── */
+/* 광석: 몬스터 레벨대별 드랍 (제작 장비의 등급 재료) */
+DATA.ores = [
+  { id: 'ore_copper',  name: '구리 광석',   icon: '🟤', maxLv: 31 },
+  { id: 'ore_iron',    name: '철 광석',     icon: '⚙️', maxLv: 91 },
+  { id: 'ore_mythril', name: '미스릴 광석', icon: '🔩', maxLv: 199 },
+  { id: 'ore_star',    name: '별강철 광석', icon: '🌟', maxLv: 349 },
+  { id: 'ore_genesis', name: '창세 광석',   icon: '💎', maxLv: 500 },
+];
+DATA.oreForLevel = lv => DATA.ores.find(o => lv <= o.maxLv) || DATA.ores[DATA.ores.length - 1];
+
+/* 보석: 제작 시 넣으면 희귀 이상 보장 + 해당 스탯 부옵션 확정 */
+DATA.craftGems = [
+  { id: 'gem_ruby',     name: '루비',     icon: '🔴', stat: 'atk' },
+  { id: 'gem_emerald',  name: '에메랄드', icon: '🟢', stat: 'hp' },
+  { id: 'gem_sapphire', name: '사파이어', icon: '🔵', stat: 'mp' },
+  { id: 'gem_diamond',  name: '금강석',   icon: '⚪', stat: 'def' },
+  { id: 'gem_topaz',    name: '토파즈',   icon: '🟡', stat: 'critRate' },
+  { id: 'gem_amethyst', name: '자수정',   icon: '🟣', stat: 'critDmg' },
+];
+
+/* 몬스터 재료: 몬스터 종류별 드랍 */
+DATA.monsterMats = [
+  { id: 'mat_jelly',    name: '슬라임 젤리',   icon: '🫧' },
+  { id: 'mat_fang',     name: '날카로운 송곳니', icon: '🦷' },
+  { id: 'mat_spore',    name: '빛나는 포자',   icon: '🍄' },
+  { id: 'mat_ecto',     name: '영혼 파편',     icon: '👻' },
+  { id: 'mat_core',     name: '마석 핵',       icon: '🔮' },
+  { id: 'mat_stardust', name: '별가루',        icon: '✨' },
+  { id: 'mat_tentacle', name: '심연의 촉수',   icon: '🦑' },
+  { id: 'mat_feather',  name: '신성한 깃털',   icon: '🪶' },
+  { id: 'mat_eye',      name: '마안 결정',     icon: '👁️' },
+  { id: 'mat_bandage',  name: '고대의 붕대',   icon: '🧻' },
+  { id: 'mat_scale',    name: '용비늘',        icon: '🐲' },
+];
+DATA.kindMaterial = {
+  slime: 'mat_jelly', bat: 'mat_fang', wolf: 'mat_fang', imp: 'mat_fang',
+  mushroom: 'mat_spore', ghost: 'mat_ecto', reaper: 'mat_ecto',
+  golem: 'mat_core', core: 'mat_core', star: 'mat_stardust',
+  jellyfish: 'mat_tentacle', kraken: 'mat_tentacle',
+  bird: 'mat_feather', angel: 'mat_feather', eyeball: 'mat_eye',
+  mummy: 'mat_bandage', dragon: 'mat_scale',
+};
+
+/* ── 룬 (드랍템) ──
+   equip: 장비에 각인 시 효과 (장비당 최대 2개, 장착 중일 때 적용)
+   skill: 스킬에 합성 시 효과 (스킬당 최대 2개) */
+DATA.runes = [
+  { id: 'rune_power',  name: '힘의 룬',   icon: '🔺', weight: 3,
+    equip: { atkPct: 5 },                 skill: { dmgPct: 12 },
+    equipDesc: '공격력 +5%',              skillDesc: '스킬 피해 +12%' },
+  { id: 'rune_guard',  name: '수호의 룬', icon: '🛡️', weight: 3,
+    equip: { defPct: 8, dmgReduce: 2 },   skill: { selfShieldPct: 8 },
+    equipDesc: '방어력 +8%, 받는 피해 -2%', skillDesc: '사용 시 최대 HP 8% 보호막' },
+  { id: 'rune_life',   name: '생명의 룬', icon: '❤️', weight: 3,
+    equip: { hpPct: 8 },                  skill: { selfHealPct: 6 },
+    equipDesc: '최대 HP +8%',             skillDesc: '사용 시 최대 HP 6% 회복' },
+  { id: 'rune_frenzy', name: '광란의 룬', icon: '🎯', weight: 3,
+    equip: { critRate: 4, critDmg: 10 },  skill: { critBonus: 20 },
+    equipDesc: '치명타 확률 +4%p, 피해 +10%p', skillDesc: '스킬 치명타 확률 +20%p' },
+  { id: 'rune_flame',  name: '화염의 룬', icon: '🔥', weight: 3,
+    equip: { dotPct: 15 },                skill: { addDot: { name: '화상', icon: '🔥', pctAtk: 30, turns: 2 } },
+    equipDesc: '독·화상 피해 +15%',       skillDesc: '스킬에 화상 2턴 부여' },
+  { id: 'rune_venom',  name: '맹독의 룬', icon: '☠️', weight: 3,
+    equip: { penetration: 3 },            skill: { addDot: { name: '중독', icon: '☠️', pctAtk: 40, turns: 3 } },
+    equipDesc: '적 방어력 3% 무시',       skillDesc: '스킬에 맹독 3턴 부여' },
+  { id: 'rune_frost',  name: '서리의 룬', icon: '❄️', weight: 3,
+    equip: { dmgReduce: 3 },              skill: { addDebuff: { stat: 'atk', pct: 20, turns: 2 } },
+    equipDesc: '받는 피해 -3%',           skillDesc: '스킬에 적 공격력 -20% 부여' },
+  { id: 'rune_swift',  name: '신속의 룬', icon: '💨', weight: 3,
+    equip: { critRate: 3 },               skill: { cdReduce: 1 },
+    equipDesc: '치명타 확률 +3%p',        skillDesc: '스킬 쿨타임 -1턴 (최소 1턴)' },
+  { id: 'rune_soul',   name: '영혼의 룬', icon: '💧', weight: 3,
+    equip: { mpPct: 10, mpRegen: 2 },     skill: { mpCostPct: -40 },
+    equipDesc: '최대 MP +10%, 턴당 MP +2', skillDesc: '스킬 MP 소모 -40%' },
+  { id: 'rune_star',   name: '별의 룬',   icon: '⭐', weight: 1,
+    equip: { atkPct: 3, hpPct: 3, defPct: 3 }, skill: { dmgPct: 8, cdReduce: 1 },
+    equipDesc: '공격력·HP·방어력 +3%',    skillDesc: '스킬 피해 +8% + 쿨타임 -1턴' },
+];
+DATA.runeById = id => DATA.runes.find(r => r.id === id);
+DATA.runeSlotsPerItem = 2;
+DATA.runeSlotsPerSkill = 2;
+
+/* ── 제작 / 조합 ── */
+DATA.craft = {
+  /* 장비 제작: 광석 5 + 몬스터 재료 3 + 골드. 보석(선택)으로 옵션 유도 */
+  oreCost: 5, matCost: 3,
+  goldCost: lv => 100 * lv,
+  /* 제작 등급 확률 (일반 없음) / 보석 사용 시 희귀 이상 */
+  rarityWeights:    [ ['uncommon', 40], ['rare', 35], ['epic', 20], ['legend', 5] ],
+  rarityWeightsGem: [ ['rare', 55], ['epic', 33], ['legend', 12] ],
+  /* 조합: 동일 등급 3개 → 상위 등급 1개 (내 레벨 기준으로 재생성) */
+  combineCount: 3,
+  combineGold: lv => 50 * lv,
+};
 DATA.subOptionPool = [
   ['atk',      2, 6],
   ['def',      2, 6],
@@ -603,6 +697,13 @@ DATA.achievements = [];
     add(`a_hunt_${m.id}`, '도감 정복', `${m.name} 헌터`, '🎯', `${m.name} 50마리 처치 (${m.zoneName})`,
       s => (s.codex[m.id] || 0) >= 50, reward);
   }
+
+  /* 제작 (5) */
+  add('a_craft1',   '제작', '첫 망치질',   '🛠️', '장비 제작 1회',        s => (s.counters.crafted || 0) >= 1, 40);
+  add('a_craft20',  '제작', '공방의 주인', '🛠️', '장비 제작 20회',       s => (s.counters.crafted || 0) >= 20, 200);
+  add('a_combine5', '제작', '연성술사',    '⚗️', '장비 조합 5회',        s => (s.counters.combined || 0) >= 5, 100);
+  add('a_rune1',    '제작', '룬 각인사',   '🔮', '룬 합성 1회',          s => (s.counters.runesFused || 0) >= 1, 50);
+  add('a_rune10',   '제작', '룬 마스터',   '🔮', '룬 합성 10회',         s => (s.counters.runesFused || 0) >= 10, 300);
 
   /* 기타 (3) */
   add('a_death10',  '기타', '칠전팔기', '💀', '10번 쓰러져도 다시 일어서기', s => s.deaths >= 10, 60);

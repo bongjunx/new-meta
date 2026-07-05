@@ -119,6 +119,7 @@ const UI = {
       skills: () => this.renderSkills(),
       inventory: () => this.renderInventory(),
       forge: () => this.renderForge(),
+      craft: () => this.renderCraft(),
       gacha: () => this.renderGacha(),
       collection: () => this.renderCollection(),
       shop: () => this.renderShop(),
@@ -504,9 +505,15 @@ const UI = {
     const enhMult = 1 + item.enhance * DATA.enhanceBonusPerLevel;
     const opts = [];
     opts.push(`<div class="main-opt">${this.statLabel(item.mainStat)} +${Math.round(item.mainValue * enhMult)}</div>`);
-    for (const [stat, val] of item.subOpts) {
+    for (const [stat, val] of item.subOpts || []) {
       opts.push(`<div class="sub-opt">${this.statLabel(stat)} +${Math.round(val * enhMult)}</div>`);
     }
+    const runeLine = (item.runes || [])
+      .map(id => DATA.runeById(id))
+      .filter(Boolean)
+      .map(r => `${r.icon} ${r.name}`)
+      .join(' · ');
+    if (runeLine) opts.push(`<div class="rune-opt">룬: ${runeLine}</div>`);
     const enh = item.enhance > 0 ? `<span class="enh-tag">+${item.enhance}</span> ` : '';
     return `
       <div class="item-name rc-${item.rarity}">${item.icon} ${enh}[${item.rarityName}] ${item.name}${extraTag}</div>
@@ -681,6 +688,150 @@ const UI = {
         ? `✨ 강화 성공! <b class="enh-tag">+${res.item.enhance}</b> ${res.item.name}`
         : '💥 강화 실패... 재료만 소모되었다.');
       setTimeout(() => { this.renderTopbar(); this.renderForge(); }, 350);
+    });
+  },
+
+  /* ══════════ 제작 / 조합 / 룬 ══════════ */
+  renderCraft() {
+    const el = document.getElementById('tab-craft');
+    const s = Game.state;
+    const cost = Game.craftCost();
+
+    /* 재료 현황 */
+    const matChip = (icon, name, n) => `<div class="mat-chip ${n > 0 ? '' : 'empty'}">${icon} ${name} <b>${n}</b></div>`;
+    let matsHtml = '<div class="mat-row">' +
+      DATA.ores.map(o => matChip(o.icon, o.name, Game.matCount(o.id))).join('') + '</div>' +
+      '<div class="mat-row">' +
+      DATA.craftGems.map(g => matChip(g.icon, g.name, Game.matCount(g.id))).join('') + '</div>' +
+      '<div class="mat-row">' +
+      DATA.monsterMats.map(m => matChip(m.icon, m.name, Game.matCount(m.id))).join('') + '</div>' +
+      '<div class="mat-row">' +
+      DATA.runes.map(r => matChip(r.icon, r.name, Game.runeCount(r.id))).join('') + '</div>';
+
+    /* 장비 제작 */
+    const gemOptions = ['<option value="">보석 없이 제작</option>']
+      .concat(DATA.craftGems.map(g => `<option value="${g.id}" ${Game.matCount(g.id) < 1 ? 'disabled' : ''}>${g.icon} ${g.name} (${this.statLabel(g.stat)} 확정, 보유 ${Game.matCount(g.id)})</option>`)).join('');
+    const craftHtml = `
+      <div class="card">
+        <div class="panel-title" style="font-size:15px">🛠️ 장비 제작</div>
+        <div class="panel-sub">재료를 모아 내 레벨(Lv.${s.level})에 맞는 장비를 만듭니다. 일반 등급은 나오지 않으며, 보석을 넣으면 <b class="rc-rare">희귀 이상 확정</b> + 해당 스탯 부옵션이 붙습니다.</div>
+        <div class="craft-controls">
+          <select id="craft-slot">${DATA.equipTypes.map(t => `<option value="${t.slot}">${t.icon} ${t.name}</option>`).join('')}</select>
+          <select id="craft-gem">${gemOptions}</select>
+          <button id="btn-craft" class="btn btn-gold">제작하기</button>
+        </div>
+        <div class="panel-sub" style="margin:10px 0 0">
+          비용: ${cost.ore.icon} ${cost.ore.name} ×${cost.oreCount} (보유 ${Game.matCount(cost.ore.id)}) ·
+          몬스터 재료 아무거나 ×${cost.matCount} (보유 ${Game.totalMonsterMats()}) ·
+          🪙 ${cost.gold.toLocaleString()}
+        </div>
+      </div>`;
+
+    /* 장비 조합 */
+    const combineOptions = DATA.rarities.slice(0, 4).map(r => {
+      const n = Game.combinableItems(r.id).length;
+      return `<option value="${r.id}" ${n < DATA.craft.combineCount ? 'disabled' : ''}>[${r.name}] ${n}개 보유 → [${DATA.rarities[Game.rarityIndex(r.id) + 1].name}] 1개</option>`;
+    }).join('');
+    const combineHtml = `
+      <div class="card">
+        <div class="panel-title" style="font-size:15px">⚗️ 장비 조합</div>
+        <div class="panel-sub">같은 등급 장비 3개를 조합해 <b>상위 등급 1개</b>를 만듭니다 (장착 중이거나 룬이 각인된 장비 제외, 강화 낮은 것부터 자동 선택). 비용: 🪙 ${DATA.craft.combineGold(s.level).toLocaleString()}</div>
+        <div class="craft-controls">
+          <select id="combine-rarity">${combineOptions}</select>
+          <button id="btn-combine" class="btn btn-gold">조합하기</button>
+        </div>
+      </div>`;
+
+    /* 룬 합성 */
+    const runeOptions = DATA.runes.map(r =>
+      `<option value="${r.id}" ${Game.runeCount(r.id) < 1 ? 'disabled' : ''}>${r.icon} ${r.name} ×${Game.runeCount(r.id)}</option>`).join('');
+    const equippedOpts = Game.equippedItems().map(i =>
+      `<option value="${i.uid}" ${(i.runes || []).length >= DATA.runeSlotsPerItem ? 'disabled' : ''}>${i.icon} ${i.name} (룬 ${(i.runes || []).length}/${DATA.runeSlotsPerItem})</option>`).join('');
+    const cls = DATA.classes[s.classId];
+    const skillOpts = cls.skills.map(sid => {
+      const n = (s.skillRunes[sid] || []).length;
+      const name = s.skillAwakened[sid] ? DATA.skillAwaken[sid].name : DATA.skills[sid].name;
+      return `<option value="${sid}" ${n >= DATA.runeSlotsPerSkill ? 'disabled' : ''}>${DATA.skills[sid].icon} ${name} (룬 ${n}/${DATA.runeSlotsPerSkill})</option>`;
+    }).join('');
+    const runeTable = DATA.runes.map(r =>
+      `<div class="rune-info"><span>${r.icon} <b>${r.name}</b></span><span>장비: ${r.equipDesc}</span><span>스킬: ${r.skillDesc}</span></div>`).join('');
+    const runeHtml = `
+      <div class="card">
+        <div class="panel-title" style="font-size:15px">🔮 룬 합성</div>
+        <div class="panel-sub">룬을 <b>장착 중인 장비</b>(스탯 강화) 또는 <b>스킬</b>(기능 부여)에 영구 합성합니다. 장비·스킬당 최대 ${DATA.runeSlotsPerItem}개.</div>
+        <div class="craft-controls">
+          <select id="rune-select">${runeOptions}</select>
+          <select id="rune-target-type"><option value="item">⚔️ 장비에</option><option value="skill">✨ 스킬에</option></select>
+          <select id="rune-target-item">${equippedOpts || '<option disabled>장착 중인 장비 없음</option>'}</select>
+          <select id="rune-target-skill" class="hidden">${skillOpts}</select>
+          <button id="btn-rune-fuse" class="btn btn-gold">합성하기</button>
+        </div>
+        <details style="margin-top:10px"><summary class="panel-sub" style="cursor:pointer;margin:0">룬 효과 전체 보기</summary>
+          <div class="rune-list">${runeTable}</div>
+        </details>
+      </div>`;
+
+    el.innerHTML = `
+      <div class="panel-title">🛠️ 제작 공방</div>
+      <div class="panel-sub">사냥으로 광석·보석·몬스터 재료·룬을 모아 장비를 만들고 강화하세요. 보유 🪙 ${s.gold.toLocaleString()}</div>
+      <div class="card"><div class="panel-title" style="font-size:14px">📦 보유 재료</div>${matsHtml}</div>
+      <div class="craft-grid">${craftHtml}${combineHtml}</div>
+      ${runeHtml}`;
+
+    /* 이벤트 */
+    document.getElementById('btn-craft').addEventListener('click', () => {
+      const slot = document.getElementById('craft-slot').value;
+      const gem = document.getElementById('craft-gem').value || null;
+      const res = Game.craftEquipment(slot, gem);
+      if (!res.ok) {
+        const msg = { slot: '제작할 장비 부위를 찾을 수 없습니다!', ore: '광석이 부족합니다!', mat: '몬스터 재료가 부족합니다!', gold: '골드가 부족합니다!', gem: '보석이 부족합니다!' }[res.reason];
+        return this.toast(msg);
+      }
+      const r = DATA.rarities.find(x => x.id === res.item.rarity);
+      this.toast(`🛠️ 제작 성공! <span class="rc-${res.item.rarity}">[${r.name}] ${res.item.name}</span>`);
+      this.renderAll();
+    });
+    document.getElementById('btn-combine').addEventListener('click', () => {
+      const rarity = document.getElementById('combine-rarity').value;
+      const res = Game.combineEquipment(rarity);
+      if (!res.ok) {
+        const msg = { rarity: '조합할 수 없는 등급입니다!', count: '같은 등급 장비가 3개 필요합니다!', gold: '골드가 부족합니다!' }[res.reason];
+        return this.toast(msg);
+      }
+      const r = DATA.rarities.find(x => x.id === res.item.rarity);
+      this.toast(`⚗️ 조합 성공! <span class="rc-${res.item.rarity}">[${r.name}] ${res.item.name}</span> 획득!`);
+      this.renderAll();
+    });
+    const typeSel = document.getElementById('rune-target-type');
+    typeSel.addEventListener('change', () => {
+      document.getElementById('rune-target-item').classList.toggle('hidden', typeSel.value !== 'item');
+      document.getElementById('rune-target-skill').classList.toggle('hidden', typeSel.value !== 'skill');
+    });
+    document.getElementById('btn-rune-fuse').addEventListener('click', () => {
+      const runeId = document.getElementById('rune-select').value;
+      const rune = DATA.runeById(runeId);
+      if (!rune || Game.runeCount(runeId) < 1) return this.toast('룬이 부족합니다!');
+      let res;
+      if (typeSel.value === 'item') {
+        const uid = parseInt(document.getElementById('rune-target-item').value);
+        if (!uid) return this.toast('장착 중인 장비가 없습니다!');
+        res = Game.fuseRuneToItem(uid, runeId);
+      } else {
+        const sid = document.getElementById('rune-target-skill').value;
+        res = Game.fuseRuneToSkill(sid, runeId);
+      }
+      if (!res.ok) {
+        const msg = {
+          slots: '룬 슬롯이 가득 찼습니다! (최대 2개)',
+          rune: '룬이 부족합니다!',
+          item: '장비를 찾을 수 없습니다!',
+          skill: '현재 직업 스킬에만 룬을 합성할 수 있습니다!',
+          duplicate: '같은 대상에는 같은 룬을 중복 합성할 수 없습니다!'
+        }[res.reason];
+        return this.toast(msg);
+      }
+      this.toast(`🔮 ${rune.icon} ${rune.name} 합성 완료!`);
+      this.renderAll();
     });
   },
 
