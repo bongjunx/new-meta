@@ -302,7 +302,7 @@ const Game = {
       ? DATA.rarities.find(r => r.id === forceRarity)
       : this.pickWeighted(DATA.rarities);
     const type = this.pick(DATA.equipTypes);
-    const tier = Math.min(9, Math.floor(itemLevel / 20));
+    const tier = Math.min(14, Math.floor(itemLevel / 20));
     const baseVal = {
       atk: 4 + itemLevel * 1.6,
       def: 3 + itemLevel * 1.3,
@@ -594,6 +594,21 @@ const Game = {
     if (this.chance(5)) def = DATA.monsters.golden;
     else def = this.pick(DATA.monsters[zoneId]);
     return this.buildMonster(def, level, def.statMult, zone);
+  },
+
+  /* ── 지역 입장 조건 ──
+     반환: null(입장 가능) 또는 { reason } */
+  equippedEnhanceSum() {
+    return this.equippedItems().reduce((s, i) => s + i.enhance, 0);
+  },
+
+  zoneLockInfo(zone) {
+    const s = this.state;
+    const reqs = [];
+    if (s.level < zone.reqLevel && s.rebirths === 0) reqs.push(`Lv.${zone.reqLevel}`);
+    if ((zone.reqRebirths || 0) > s.rebirths) reqs.push(`환생 ${zone.reqRebirths}회`);
+    if ((zone.reqEnhSum || 0) > this.equippedEnhanceSum()) reqs.push(`장비 강화 합계 +${zone.reqEnhSum}`);
+    return reqs.length ? reqs : null;
   },
 
   /* 무한의 탑: 층수 기반 무한 스케일링, 10층마다 보스 */

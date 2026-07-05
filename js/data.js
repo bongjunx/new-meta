@@ -179,7 +179,27 @@ DATA.zones = [
     desc: '신들이 거니는 황금빛 정원.', boss: true },
   { id: 'origin',  name: '태초의 대지', emoji: '🌋', reqLevel: 180, levelRange: [180, 200],
     bg: 'zone-origin',  particle: 'pt-ember', banner: 'linear-gradient(135deg,#3d0a16,#8a1630,#ff2b4a)',
-    desc: '세계가 시작된 곳. 최강의 존재, 용신이 기다린다.', boss: true },
+    desc: '세계가 시작된 곳. 용신을 넘어야 별의 영역이 열린다.', boss: true },
+  /* ── 초월 지역 (Lv.200~500) — 환생·장비 게이트 ──
+     reqRebirths: 필요 환생 횟수, reqEnhSum: 장착 장비 강화 합계 (5부위 × 최대 +20 = 100) */
+  { id: 'starfall', name: '별무리 잔해', emoji: '☄️', reqLevel: 200, levelRange: [200, 250],
+    bg: 'zone-starfall', particle: 'pt-star', banner: 'linear-gradient(135deg,#0d1030,#2b3d8a,#7a9aff)',
+    desc: '부서진 별들이 떠도는 우주의 가장자리.', reqRebirths: 1, reqEnhSum: 20 },
+  { id: 'voidsea',  name: '공허의 바다', emoji: '🌌', reqLevel: 250, levelRange: [250, 300],
+    bg: 'zone-voidsea', particle: 'pt-void', banner: 'linear-gradient(135deg,#100a2b,#2b16a0,#5e3ad8)',
+    desc: '빛조차 삼키는 무(無)의 심연.', reqRebirths: 2, reqEnhSum: 35, boss: true },
+  { id: 'eclipse',  name: '일식의 땅',   emoji: '🌑', reqLevel: 300, levelRange: [300, 350],
+    bg: 'zone-eclipse', particle: 'pt-void', banner: 'linear-gradient(135deg,#16161f,#2b2b3d,#4a4a5e)',
+    desc: '영원한 일식 아래 잠긴 어둠의 대지.', reqRebirths: 3, reqEnhSum: 50, boss: true },
+  { id: 'dragonrealm', name: '용들의 영역', emoji: '🐲', reqLevel: 350, levelRange: [350, 400],
+    bg: 'zone-dragonrealm', particle: 'pt-ember', banner: 'linear-gradient(135deg,#2b0d0d,#8a1616,#ff6b4a)',
+    desc: '고룡들이 지배하는 금단의 영역.', reqRebirths: 5, reqEnhSum: 70, boss: true },
+  { id: 'pantheon', name: '만신전',      emoji: '🏛️', reqLevel: 400, levelRange: [400, 450],
+    bg: 'zone-pantheon', particle: 'pt-star', banner: 'linear-gradient(135deg,#3d3016,#9a8035,#ffe8b0)',
+    desc: '타락한 신들이 옥좌를 지키는 하늘 위의 신전.', reqRebirths: 7, reqEnhSum: 85, boss: true },
+  { id: 'genesis',  name: '창세의 문',   emoji: '🌠', reqLevel: 450, levelRange: [450, 500],
+    bg: 'zone-genesis', particle: 'pt-star', banner: 'linear-gradient(135deg,#2b1030,#8a3ad8,#ffd8ff)',
+    desc: '모든 것이 시작된 문. 창조주의 그림자가 최후의 시험을 내린다.', reqRebirths: 10, reqEnhSum: 100, boss: true },
 ];
 
 /* ── 몬스터 ──
@@ -266,6 +286,48 @@ DATA.monsters = {
     { id: 'dragon_god',  name: '태초의 용신',   kind: 'dragon',   tint: '#ff2b4a', statMult: 3.3,  boss: true, scale: 1.6,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
+  starfall: [
+    { id: 'slime_star',  name: '별빛 슬라임',   kind: 'slime',    tint: '#b0c9ff', statMult: 2.6, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'bat_meteor',  name: '유성 박쥐',     kind: 'bat',      tint: '#7a9aff', statMult: 2.5, skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'golem_stardust', name: '성진 골렘',  kind: 'golem',    tint: '#9ab0ff', statMult: 2.75, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'dragon_comet', name: '혜성 드레이크', kind: 'dragon',  tint: '#6b8aff', statMult: 3.1, miniBoss: true, scale: 1.3,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  voidsea: [
+    { id: 'slime_void',  name: '공허 슬라임',   kind: 'slime',    tint: '#5e3ad8', statMult: 2.8, skills: ['m_tackle', 'm_spit', 'm_curse'] },
+    { id: 'imp_abyssal', name: '심연 임프',     kind: 'imp',      tint: '#4a2bd8', statMult: 2.75, skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'ghost_null',  name: '무(無)의 유령', kind: 'ghost',    tint: '#6b4aff', statMult: 2.9, skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'dragon_leviathan', name: '공허 리바이어선', kind: 'dragon', tint: '#3a16b0', statMult: 3.5, boss: true, scale: 1.5,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  eclipse: [
+    { id: 'ghost_eclipse', name: '일식 유령',   kind: 'ghost',    tint: '#4a4a5e', statMult: 3.0, skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'golem_shadow', name: '그림자 골렘',  kind: 'golem',    tint: '#3a3a4a', statMult: 3.15, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'mush_dark',   name: '암흑 버섯',     kind: 'mushroom', tint: '#5e4a6b', statMult: 3.0, skills: ['m_tackle', 'm_spore', 'm_poison'] },
+    { id: 'dragon_umbra', name: '일식의 흑룡',  kind: 'dragon',   tint: '#2b2b3d', statMult: 3.7, boss: true, scale: 1.5,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  dragonrealm: [
+    { id: 'dragon_whelp', name: '비룡 유생',    kind: 'dragon',   tint: '#d84a4a', statMult: 3.2, scale: 1.1, skills: ['m_tackle', 'm_burn', 'm_bite'] },
+    { id: 'golem_scale', name: '용비늘 골렘',   kind: 'golem',    tint: '#b03a3a', statMult: 3.35, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'imp_dragonblood', name: '용혈 임프', kind: 'imp',      tint: '#ff6b4a', statMult: 3.25, skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'dragon_elder', name: '용계의 군주',  kind: 'dragon',   tint: '#8a1616', statMult: 3.9, boss: true, scale: 1.6,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  pantheon: [
+    { id: 'golem_idol',  name: '신전 수호상',   kind: 'golem',    tint: '#e8d8b0', statMult: 3.4, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'ghost_oracle', name: '신탁 유령',    kind: 'ghost',    tint: '#fff0d8', statMult: 3.35, skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'imp_smite',   name: '천벌 임프',     kind: 'imp',      tint: '#ffd86b', statMult: 3.45, skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'dragon_fallen', name: '타락한 신',   kind: 'dragon',   tint: '#d8b04a', statMult: 4.1, boss: true, scale: 1.6,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  genesis: [
+    { id: 'slime_genesis', name: '창세 슬라임', kind: 'slime',    tint: '#f0f0ff', statMult: 3.6, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'ghost_origin', name: '기원의 유령',  kind: 'ghost',    tint: '#ffe8ff', statMult: 3.55, skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'golem_creation', name: '창세 골렘',  kind: 'golem',    tint: '#d8c9ff', statMult: 3.7, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'dragon_creator', name: '창조주의 그림자', kind: 'dragon', tint: '#e83aff', statMult: 4.5, boss: true, scale: 1.7,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
   /* 모든 지역 공통 희귀 출현 (5%) */
   golden: { id: 'slime_gold', name: '황금 슬라임', kind: 'slime', tint: '#ffd75e', statMult: 0.8, golden: true, skills: ['m_tackle'] },
 };
@@ -309,18 +371,23 @@ DATA.rarities = [
   { id: 'legend',   name: '전설', color: 'legend',   weight: 2,  statMult: 2.8,  subOpts: 4 },
 ];
 
-/* 장비 티어: 아이템 레벨 20당 1티어, 총 10티어 (Lv.200 대응) */
+/* 장비 티어: 아이템 레벨 20당 1티어, 총 15티어 (Lv.500 대응) */
 DATA.equipTypes = [
   { slot: 'weapon', name: '무기', icon: '⚔️', mainStat: 'atk',
-    names: ['낡은 검', '강철 검', '기사단 검', '용살자의 검', '별빛 대검', '서리 파멸검', '고대 신검', '심연의 대검', '천공의 성검', '태초의 신검'] },
+    names: ['낡은 검', '강철 검', '기사단 검', '용살자의 검', '별빛 대검', '서리 파멸검', '고대 신검', '심연의 대검', '천공의 성검', '태초의 신검',
+            '유성의 잔격', '공허 절단자', '일식의 마검', '용계 파괴신검', '창세의 검'] },
   { slot: 'armor', name: '갑옷', icon: '🥋', mainStat: 'def',
-    names: ['천 옷', '가죽 갑옷', '사슬 갑옷', '판금 갑옷', '용비늘 갑옷', '서리 강철갑', '고대 유물갑주', '심해 비늘갑', '천상의 갑주', '태초의 성갑'] },
+    names: ['천 옷', '가죽 갑옷', '사슬 갑옷', '판금 갑옷', '용비늘 갑옷', '서리 강철갑', '고대 유물갑주', '심해 비늘갑', '천상의 갑주', '태초의 성갑',
+            '별무리 갑주', '공허 방벽갑', '일식의 흑갑', '고룡왕의 갑주', '창세의 성갑'] },
   { slot: 'helmet', name: '투구', icon: '🪖', mainStat: 'hp',
-    names: ['천 두건', '가죽 모자', '강철 투구', '수호자의 투구', '용왕의 관', '설원의 왕관', '고대의 면류관', '심연의 투구', '천공의 관', '태초의 왕관'] },
+    names: ['천 두건', '가죽 모자', '강철 투구', '수호자의 투구', '용왕의 관', '설원의 왕관', '고대의 면류관', '심연의 투구', '천공의 관', '태초의 왕관',
+            '별의 왕관', '공허의 면갑', '일식의 관', '용제의 관', '창세의 왕관'] },
   { slot: 'gloves', name: '장갑', icon: '🧤', mainStat: 'atk',
-    names: ['천 장갑', '가죽 장갑', '강철 건틀릿', '맹공의 장갑', '패왕의 손아귀', '서리 손톱', '고대의 권갑', '심해의 손아귀', '뇌신의 건틀릿', '태초의 주먹'] },
+    names: ['천 장갑', '가죽 장갑', '강철 건틀릿', '맹공의 장갑', '패왕의 손아귀', '서리 손톱', '고대의 권갑', '심해의 손아귀', '뇌신의 건틀릿', '태초의 주먹',
+            '유성 파쇄권', '공허 마수갑', '일식의 손톱', '용계 학살권', '창세의 손'] },
   { slot: 'accessory', name: '장신구', icon: '💍', mainStat: 'hp',
-    names: ['나무 목걸이', '은 반지', '수정 목걸이', '마력의 귀걸이', '왕의 인장', '서리 부적', '고대의 성물', '심해의 진주', '천상의 성표', '태초의 심장'] },
+    names: ['나무 목걸이', '은 반지', '수정 목걸이', '마력의 귀걸이', '왕의 인장', '서리 부적', '고대의 성물', '심해의 진주', '천상의 성표', '태초의 심장',
+            '별의 파편', '공허의 눈동자', '일식의 각인', '용신의 비늘', '창세의 인장'] },
 ];
 
 /* 부가 옵션 풀: [스탯, 최소, 최대] */
@@ -428,8 +495,9 @@ DATA.achievements = [];
   [[1, '두 번째 삶', 100], [3, '윤회의 초월자', 300], [5, '다섯 번째 여정', 500], [10, '영겁의 순례자', 800], [20, '시간을 초월한 자', 1500]]
     .forEach(([n, name, r]) => add(`a_rebirth${n}`, '환생', name, '♻️', `환생 ${n}회`, s => s.rebirths >= n, r));
 
-  /* 레벨 (5) */
-  [[40, '베테랑', 50], [80, '역전의 용사', 120], [120, '초인', 250], [160, '반신', 400], [200, '정점에 선 자', 800]]
+  /* 레벨 (8) */
+  [[40, '베테랑', 50], [80, '역전의 용사', 120], [120, '초인', 250], [160, '반신', 400], [200, '정점에 선 자', 800],
+   [300, '별을 넘은 자', 1200], [400, '신을 넘은 자', 1800], [500, '창세의 증인', 3000]]
     .forEach(([n, name, r]) => add(`a_lv${n}`, '성장', name, '🎖️', `레벨 ${n} 달성`, s => s.level >= n || (n <= 40 && s.rebirths > 0), r));
 
   /* 골드 (4) */
@@ -494,11 +562,20 @@ DATA.shopItems = [
 /* 레벨업 필요 경험치 */
 DATA.expForLevel = lv => Math.floor(28 * Math.pow(lv, 1.55));
 
-/* ── 고레벨 스케일 곡선 (Lv.200 대응) ──
-   저레벨(~30)에서는 거의 1, 고레벨에서 가파르게 상승해
-   스킬 100레벨·장비 옵션·패시브를 갖춘 캐릭터와 균형을 맞춘다. */
-DATA.monsterCurve = lv => 1 + Math.pow(lv / 60, 1.6);
-DATA.rewardCurve  = lv => 1 + Math.pow(lv / 90, 1.4);
+/* ── 고레벨 스케일 곡선 (Lv.500 대응) ──
+   저레벨(~30)에서는 거의 1, 고레벨에서 가파르게 상승.
+   Lv.250 초과부터는 추가 벽이 곱해져서 환생 스탯 스택 + 고강화 장비 없이는
+   수치적으로 뚫을 수 없다 (300+ 지역의 실질적 요구 조건). */
+DATA.monsterCurve = lv => {
+  let c = 1 + Math.pow(lv / 60, 1.6);
+  if (lv > 250) c *= 1 + Math.pow((lv - 250) / 50, 1.8);
+  return c;
+};
+DATA.rewardCurve = lv => {
+  let c = 1 + Math.pow(lv / 90, 1.4);
+  if (lv > 250) c *= 1 + Math.pow((lv - 250) / 80, 1.4);
+  return c;
+};
 
 /* 물약 회복량 */
 DATA.potionHeal = { hp: 0.40, mp: 0.50 };

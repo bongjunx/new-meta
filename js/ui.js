@@ -153,13 +153,14 @@ const UI = {
       <div class="panel-sub">사냥터를 선택해 몬스터를 사냥하세요. 처치 시 경험치·골드·장비를 얻습니다.</div>
       <div class="zone-grid">`;
     for (const z of DATA.zones) {
-      const locked = lv < z.reqLevel && Game.state.rebirths === 0;
+      const lockReqs = Game.zoneLockInfo(z);
       html += `
-        <div class="card zone-card ${locked ? 'locked' : ''}" data-zone="${z.id}">
+        <div class="card zone-card ${lockReqs ? 'locked' : ''}" data-zone="${z.id}">
           <div class="zone-banner" style="background:${z.banner}"></div>
           <div class="zone-name">${z.emoji} ${z.name} ${z.boss ? '👑' : ''}</div>
-          <div class="zone-info">권장 레벨 ${z.levelRange[0]}~${z.levelRange[1]}<br>${z.desc}</div>
-          ${locked ? `<div class="zone-lock">🔒 Lv.${z.reqLevel}</div>` : ''}
+          <div class="zone-info">권장 레벨 ${z.levelRange[0]}~${z.levelRange[1]}<br>${z.desc}
+            ${z.reqRebirths ? `<br><span style="color:var(--exp)">요구: 환생 ${z.reqRebirths}회 · 장비 강화 합계 +${z.reqEnhSum}</span>` : ''}</div>
+          ${lockReqs ? `<div class="zone-lock">🔒</div><div class="zone-lock-reqs">${lockReqs.join(' · ')} 필요</div>` : ''}
         </div>`;
     }
     /* 무한의 탑 */
@@ -242,7 +243,7 @@ const UI = {
   /* ══════════ 능력치 / 환생 ══════════ */
   renderAutoBattlePanel(el) {
     if (!window.AutoBattle) return;
-    const unlockedZones = DATA.zones.filter(z => Game.state.level >= z.reqLevel || Game.state.rebirths > 0);
+    const unlockedZones = DATA.zones.filter(z => !Game.zoneLockInfo(z));
     const selected = AutoBattle.mode?.zoneId || unlockedZones[unlockedZones.length - 1]?.id || 'plain';
     const panel = document.createElement('div');
     panel.className = 'card auto-panel';

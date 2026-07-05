@@ -681,6 +681,22 @@ canvas { image-rendering: pixelated; }
 
 /* ═══════════ v3: 200레벨 확장 ═══════════ */
 
+/* 지역 잠금 요구조건 */
+.zone-lock-reqs {
+  position: absolute; bottom: 10px; right: 12px;
+  font-size: 10px; color: var(--hp);
+  background: rgba(0,0,0,.55); border: 1px solid rgba(229,72,77,.4);
+  border-radius: 6px; padding: 2px 7px;
+}
+
+/* 초월 지역 배경 (Lv.200~500) */
+#stage-bg.zone-starfall    { background: linear-gradient(180deg, #05081f 0%, #0d1030 40%, #2b3d8a 75%, #16204a 100%); }
+#stage-bg.zone-voidsea     { background: linear-gradient(180deg, #060314 0%, #100a2b 40%, #2b16a0 78%, #14083d 100%); }
+#stage-bg.zone-eclipse     { background: linear-gradient(180deg, #0a0a0d 0%, #16161f 45%, #3d3d52 78%, #1f1f2b 100%); }
+#stage-bg.zone-dragonrealm { background: linear-gradient(180deg, #140505 0%, #2b0d0d 40%, #8a1616 78%, #401010 100%); }
+#stage-bg.zone-pantheon    { background: linear-gradient(180deg, #14100a 0%, #3d3016 45%, #9a8035 78%, #4a3d1f 100%); }
+#stage-bg.zone-genesis     { background: linear-gradient(180deg, #0d0514 0%, #2b1030 40%, #8a3ad8 76%, #3d1650 100%); }
+
 /* 신규 사냥터 배경 */
 #stage-bg.zone-frost  { background: linear-gradient(180deg, #0d1a2b 0%, #1f3d5e 45%, #4a7aa0 75%, #2b4a6b 100%); }
 #stage-bg.zone-ruins  { background: linear-gradient(180deg, #1f1a0d 0%, #3d3020 45%, #6b5535 75%, #40351f 100%); }
