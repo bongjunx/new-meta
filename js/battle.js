@@ -443,6 +443,7 @@ const Battle = {
       else if (d.type === 'potion_mp') { Game.state.potions.mp++; dropLines.push('🔮 MP 물약'); }
       else if (d.type === 'stone') { Game.state.stones += d.count; dropLines.push(`💎 강화석 ×${d.count}`); }
       else if (d.type === 'tome') { Game.state.tomes += d.count; dropLines.push(`<span class="drop-shiny" style="color:var(--gold)">📖 스킬의 서 ×${d.count}</span>`); }
+      else if (d.type === 'awaken_stone') { Game.state.awakenStones += d.count; dropLines.push(`<span class="drop-shiny" style="color:var(--exp)">🌠 각성석 ×${d.count}</span>`); }
     }
 
     // 학살자 패시브: 처치 시 회복

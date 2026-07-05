@@ -31,9 +31,11 @@ const Game = {
       stones: 3,
       gems: 60,
       tomes: 0,
+      awakenStones: 0,          // 각성석 (Lv.250+ 보스 전용 드랍)
       skillPoints: 1,
       passiveLevels: {},        // passiveId → level (최대 100)
       skillLevels: {},          // skillId → level (최대 100, 기본 1)
+      skillAwakened: {},        // skillId → true (각성 완료)
       potions: { hp: 3, mp: 2 },
       inventory: [],
       equipped: { weapon: null, armor: null, helmet: null, gloves: null, accessory: null },
@@ -182,13 +184,17 @@ const Game = {
   /* ── 액티브 스킬 레벨 / 강화 ── */
   skillLevel(skillId) { return this.state.skillLevels[skillId] || 1; },
 
-  /* 레벨이 반영된 전투용 스킬 객체 (전투 시작 시 스냅샷) */
+  /* 레벨·각성이 반영된 전투용 스킬 객체 (전투 시작 시 스냅샷) */
   effectiveSkill(skillId) {
-    const base = DATA.skills[skillId];
+    let base = DATA.skills[skillId];
+    const awakened = !!(this.state.skillAwakened && this.state.skillAwakened[skillId]);
+    if (awakened && DATA.skillAwaken[skillId]) {
+      base = { ...base, ...DATA.skillAwaken[skillId] };
+    }
     const lv = this.skillLevel(skillId);
     const pow = DATA.skillPower(lv);
     const mods = this.passiveMods();
-    const sk = { id: skillId, ...base, level: lv, curCd: 0 };
+    const sk = { id: skillId, ...base, level: lv, awakened, curCd: 0 };
     if (sk.dmgMult) {
       sk.dmgMult = sk.dmgMult * pow;
       if (sk.ult && mods.ultDmgPct > 0) sk.dmgMult *= 1 + mods.ultDmgPct / 100;
@@ -206,6 +212,31 @@ const Game = {
 
   skillUpgradeCost(skillId) {
     return DATA.skillUpgrade.cost(this.skillLevel(skillId));
+  },
+
+  /* ── 스킬 각성 ── */
+  canAwakenSkill(skillId) {
+    const reqs = [];
+    if (this.state.skillAwakened[skillId]) return { done: true, reqs };
+    if (this.skillLevel(skillId) < DATA.awaken.reqSkillLevel) reqs.push(`스킬 Lv.${DATA.awaken.reqSkillLevel}`);
+    if (this.state.rebirths < DATA.awaken.reqRebirths) reqs.push(`환생 ${DATA.awaken.reqRebirths}회`);
+    return { done: false, reqs, eligible: reqs.length === 0 };
+  },
+
+  awakenSkill(skillId) {
+    const chk = this.canAwakenSkill(skillId);
+    if (chk.done) return { ok: false, reason: 'done' };
+    if (!chk.eligible) return { ok: false, reason: 'reqs' };
+    const c = DATA.awaken.cost;
+    if (this.state.awakenStones < c.stones) return { ok: false, reason: 'stone' };
+    if (this.state.gems < c.gems) return { ok: false, reason: 'gems' };
+    if (this.state.gold < c.gold) return { ok: false, reason: 'gold' };
+    this.state.awakenStones -= c.stones;
+    this.state.gems -= c.gems;
+    this.state.gold -= c.gold;
+    this.state.skillAwakened[skillId] = true;
+    this.save();
+    return { ok: true };
   },
 
   upgradeSkill(skillId) {
@@ -689,6 +720,15 @@ const Game = {
     if (monster.dailyId) tomeRate += 10;
     if (tomeRate > 0 && this.chance(tomeRate)) {
       drops.push({ type: 'tome', count: monster.boss ? this.rand(1, 2) : 1 });
+    }
+
+    /* 각성석 드랍: 상위 콘텐츠 보스 전용 (Lv.250+ 보스 35%, 탑 50층+ 보스 25%) */
+    if (monster.boss) {
+      if (monster.zone.id === 'tower') {
+        if (lv >= 50 && this.chance(25)) drops.push({ type: 'awaken_stone', count: 1 });
+      } else if (lv >= 250 && this.chance(35)) {
+        drops.push({ type: 'awaken_stone', count: 1 });
+      }
     }
 
     return { exp: Math.round(exp), gold: Math.round(gold), gems, drops };

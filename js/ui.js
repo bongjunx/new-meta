@@ -393,24 +393,44 @@ const UI = {
     const cls = DATA.classes[Game.state.classId];
     const s = Game.state;
     let html = `
-      <div class="panel-title">✨ 액티브 스킬 <span class="panel-sub" style="display:inline">— ${cls.icon} ${cls.name} 전용 · 보유 📖 ${s.tomes} · 🪙 ${s.gold.toLocaleString()} · 💠 ${s.gems.toLocaleString()}</span></div>
-      <div class="panel-sub">스킬을 강화하면 위력이 레벨당 +${Math.round(DATA.skillUpgrade.powerPerLevel * 100)}% 증가합니다 (최대 Lv.${DATA.skillUpgrade.maxLevel}). 스킬의 서는 보스·탑·일일 던전에서 드랍됩니다.</div>
+      <div class="panel-title">✨ 액티브 스킬 <span class="panel-sub" style="display:inline">— ${cls.icon} ${cls.name} 전용 · 보유 📖 ${s.tomes} · 🌠 ${s.awakenStones} · 🪙 ${s.gold.toLocaleString()} · 💠 ${s.gems.toLocaleString()}</span></div>
+      <div class="panel-sub">강화: 레벨당 위력 +${Math.round(DATA.skillUpgrade.powerPerLevel * 100)}% (최대 Lv.${DATA.skillUpgrade.maxLevel}) — 스킬의 서 📖는 보스·탑·일일 던전에서.<br>
+      각성: 스킬 Lv.${DATA.awaken.reqSkillLevel} + 환생 ${DATA.awaken.reqRebirths}회 달성 시 스킬이 <b style="color:var(--exp)">완전히 새로운 형태로 변신</b> — 각성석 🌠은 Lv.250+ 지역 보스와 탑 50층+ 보스만 드랍.</div>
       <div class="skill-list">`;
+    const ac = DATA.awaken.cost;
     for (const sid of cls.skills) {
-      const sk = DATA.skills[sid];
+      const awakened = !!s.skillAwakened[sid];
+      const sk = awakened ? { ...DATA.skills[sid], ...DATA.skillAwaken[sid] } : DATA.skills[sid];
       const lv = Game.skillLevel(sid);
       const maxed = lv >= DATA.skillUpgrade.maxLevel;
       const cost = maxed ? null : Game.skillUpgradeCost(sid);
       const power = Math.round((DATA.skillPower(lv) - 1) * 100);
       const canPay = cost && s.gold >= cost.gold && s.tomes >= cost.tomes && (cost.gems === 0 || s.gems >= cost.gems);
+      const chk = Game.canAwakenSkill(sid);
+      const awakenDef = DATA.skillAwaken[sid];
+      let awakenHtml = '';
+      if (awakened) {
+        awakenHtml = '<span class="awaken-tag">✦ 각성</span>';
+      } else if (chk.eligible) {
+        const canPayAw = s.awakenStones >= ac.stones && s.gems >= ac.gems && s.gold >= ac.gold;
+        awakenHtml = `
+          <div class="awaken-box">
+            <div class="awaken-preview">🌠 각성 시: <b>${awakenDef.name}</b> — ${awakenDef.desc}</div>
+            <button class="btn btn-awaken btn-tiny btn-skill-awaken" data-sid="${sid}" ${canPayAw ? '' : 'disabled'}>
+              ✦ 각성 (🌠${ac.stones} · 💠${ac.gems} · 🪙${(ac.gold / 10000).toLocaleString()}만)</button>
+          </div>`;
+      } else {
+        awakenHtml = `<div class="awaken-box locked">🔒 각성 조건: ${chk.reqs.join(' · ')}</div>`;
+      }
       html += `
-        <div class="card skill-card">
-          <div class="skill-icon ${sk.ult ? 'ult' : ''}">${sk.icon}</div>
+        <div class="card skill-card ${awakened ? 'awakened-card' : ''}">
+          <div class="skill-icon ${sk.ult ? 'ult' : ''} ${awakened ? 'awakened-icon' : ''}">${sk.icon}</div>
           <div class="skill-body">
-            <div class="skill-name">${sk.name} <span class="enh-tag">Lv.${lv}</span>${sk.ult ? '<span class="tag">궁극기</span>' : ''}
+            <div class="skill-name">${sk.name} <span class="enh-tag">Lv.${lv}</span>${sk.ult ? '<span class="tag">궁극기</span>' : ''}${awakened ? '<span class="awaken-tag">✦</span>' : ''}
               ${power > 0 ? `<span class="sbonus">위력 +${power}%</span>` : ''}</div>
             <div class="skill-meta">MP ${sk.mp} · 쿨타임 ${sk.cd}턴${sk.goldCost ? ` · 골드 ${sk.goldCost}` : ''}</div>
             <div class="skill-desc">${sk.desc}</div>
+            ${awakened ? '' : awakenHtml}
           </div>
           <div class="skill-upgrade">
             ${maxed
@@ -452,6 +472,20 @@ const UI = {
           return this.toast(msg);
         }
         this.toast(`📖 ${DATA.skills[b.dataset.sid].name} Lv.${res.level} 달성!`);
+        this.renderAll();
+      });
+    });
+    el.querySelectorAll('.btn-skill-awaken').forEach(b => {
+      b.addEventListener('click', () => {
+        const sid = b.dataset.sid;
+        const aw = DATA.skillAwaken[sid];
+        if (!confirm(`[${DATA.skills[sid].name}] 을(를) [${aw.name}] (으)로 각성시킬까요?\n비용: 🌠 각성석 ${DATA.awaken.cost.stones} + 💠 ${DATA.awaken.cost.gems} + 🪙 ${DATA.awaken.cost.gold.toLocaleString()}\n(각성은 되돌릴 수 없습니다)`)) return;
+        const res = Game.awakenSkill(sid);
+        if (!res.ok) {
+          const msg = { done: '이미 각성한 스킬입니다!', reqs: '각성 조건을 만족하지 못했습니다!', stone: '각성석이 부족합니다!', gems: '다이아가 부족합니다!', gold: '골드가 부족합니다!' }[res.reason];
+          return this.toast(msg);
+        }
+        this.toast(`🌠 <b>${aw.name}</b> 각성! 스킬이 새로운 힘에 눈떴다!`);
         this.renderAll();
       });
     });
@@ -938,7 +972,7 @@ const UI = {
       const noGold = sk.goldCost && Game.state.gold < sk.goldCost;
       btn.disabled = disabled || sk.curCd > 0 || noMp || noGold;
       btn.innerHTML = `
-        <span class="ab-name">${sk.icon} ${sk.name}${sk.level > 1 ? ` <span class="enh-tag">Lv.${sk.level}</span>` : ''}</span>
+        <span class="ab-name">${sk.icon} ${sk.name}${sk.awakened ? '<span class="awaken-tag">✦</span>' : ''}${sk.level > 1 ? ` <span class="enh-tag">Lv.${sk.level}</span>` : ''}</span>
         <span class="ab-desc">MP ${sk.mp} · 쿨 ${sk.cd}턴${sk.goldCost ? ` · 🪙${sk.goldCost}` : ''}</span>
         ${sk.curCd > 0 ? `<span class="cd-overlay">⏳ ${sk.curCd}</span>` : ''}`;
       btn.title = sk.desc;

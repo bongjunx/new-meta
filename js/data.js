@@ -127,6 +127,64 @@ DATA.passives = [
   { id: 'p_warlord',  name: '투신의 혼',  icon: '👺', per: { ultDmgPct: 0.6 },  descFn: lv => `궁극기 피해 +${DATA.pv(0.6, lv)}%` },
 ];
 
+/* ── 스킬 각성 (상위 유저 전용: 스킬이 완전히 다른 형태로 변신) ──
+   조건: 해당 스킬 Lv.50 이상 + 환생 3회 이상
+   재료: 각성석 🌠 (Lv.250+ 보스 / 탑 50층+ 보스 전용 드랍) + 다이아 + 골드
+   각성 후에도 스킬 레벨은 유지되며 계속 성장한다. */
+DATA.awaken = {
+  reqSkillLevel: 50,
+  reqRebirths: 3,
+  cost: { stones: 3, gems: 500, gold: 1000000 },
+};
+DATA.skillAwaken = {
+  /* 기사 */
+  kn_bash:  { name: '심판의 파성추', icon: '⚡', dmgMult: 2.4, stunChance: 55, fxColor: '#ffe9a0',
+              desc: '[각성] 신성한 파성추로 240% 피해. 55% 확률로 적을 1턴 기절시킨다.' },
+  kn_wall:  { name: '불멸의 성채', icon: '🏯', shieldPct: 55, selfHealPct: 10,
+              buff: { stat: 'def', pct: 120, turns: 3 },
+              desc: '[각성] 최대 HP 55% 보호막 + HP 10% 회복 + 3턴간 방어력 +120%.' },
+  kn_holy:  { name: '천상의 단죄', icon: '🌅', dmgMult: 3.2, selfHealPct: 22, fxColor: '#fff3c0',
+              desc: '[각성] 천상의 빛으로 320% 피해를 주고 최대 HP의 22%를 회복한다.' },
+  kn_ult:   { name: '신의 심판', icon: '☀️', dmgMult: 6.0, selfHealPct: 40, fx: 'meteor',
+              desc: '[각성 궁극기] 신의 철퇴가 내려꽂혀 600% 피해. 최대 HP의 40%를 회복한다.' },
+  /* 도적 */
+  rg_double:{ name: '환영 연무', icon: '🌪️', dmgMult: 0.85, hits: 3, fxColor: '#e070ff',
+              desc: '[각성] 환영과 함께 3연격. 각 85% 피해.' },
+  rg_poison:{ name: '사신의 맹독', icon: '💀', dmgMult: 1.7, dot: { name: '중독', icon: '☠️', pctAtk: 85, turns: 3 },
+              desc: '[각성] 170% 피해 + 3턴간 공격력 85%의 맹독.' },
+  rg_shadow:{ name: '심연 은신', icon: '🕳️', dodge: { turns: 2 }, buff: { stat: 'critRate', pct: 0, flat: 50, turns: 3 },
+              desc: '[각성] 2턴간 모든 공격 회피, 3턴간 치명타 확률 +50%p.' },
+  rg_ult:   { name: '절명', icon: '🩸', dmgMult: 4.8, critBonus: 100, fxColor: '#ff3a5e',
+              desc: '[각성 궁극기] 급소를 꿰뚫는 확정 치명타로 480% 피해.' },
+  /* 상인 */
+  mc_coin:  { name: '황금 유성우', icon: '💫', dmgMult: 1.9, goldGain: [30, 80], fxColor: '#ffd75e',
+              desc: '[각성] 금화 폭풍으로 190% 피해. 골드를 30~80 줍는다.' },
+  mc_bomb:  { name: '파산 폭탄', icon: '🧨', dmgMult: 3.8, goldCost: 200, fxColor: '#ffb03a',
+              desc: '[각성] 골드 200을 태워 380% 피해의 대폭발을 일으킨다.' },
+  mc_deal:  { name: '대상인의 계약', icon: '🤝', buff: { stat: 'atk', pct: 65, turns: 4 }, mpRestorePct: 40,
+              desc: '[각성] 4턴간 공격력 +65%, MP를 최대치의 40% 회복한다.' },
+  mc_ult:   { name: '황금 신화', icon: '🏆', dmgMult: 3.5, goldScale: 0.012, goldScaleCap: 4.0,
+              desc: '[각성 궁극기] 350% 피해 + 보유 골드 1.2%만큼 추가 피해(최대 +400%).' },
+  /* 마법사 */
+  mg_fire:  { name: '태양 폭발', icon: '🌞', dmgMult: 2.8, dot: { name: '화상', icon: '🔥', pctAtk: 50, turns: 3 }, fx: 'boom', fxColor: '#ffb03a',
+              desc: '[각성] 소형 태양을 소환해 280% 피해 + 강력한 화상 3턴.' },
+  mg_ice:   { name: '절대영도', icon: '🧊', dmgMult: 2.5, debuff: { stat: 'atk', pct: 50, turns: 3 }, stunChance: 30, fxColor: '#7ad4ff',
+              desc: '[각성] 250% 피해. 적 공격력 -50% 3턴, 30% 확률로 동결(기절).' },
+  mg_shield:{ name: '아르카나 결계', icon: '🔷', shieldPct: 75, mpRestorePct: 15,
+              desc: '[각성] 최대 HP 75%의 대결계를 펼치고 MP를 15% 회복한다.' },
+  mg_ult:   { name: '별의 종말', icon: '🌟', dmgMult: 7.0, dot: { name: '화상', icon: '🔥', pctAtk: 80, turns: 3 },
+              desc: '[각성 궁극기] 별을 떨어뜨려 700% 피해 + 파멸적 화상.' },
+  /* 검투사 */
+  gl_spin:  { name: '폭풍의 칼날', icon: '🌪️', dmgMult: 1.3, hits: 2, fxColor: '#ff9a5e',
+              desc: '[각성] 회오리 2연격. 각 130% 피해.' },
+  gl_rage:  { name: '전신의 격노', icon: '👹', buff: { stat: 'atk', pct: 85, turns: 3 }, ragePct: 50,
+              desc: '[각성] 3턴간 공격력 +85%. HP가 50% 미만이면 효과 2배.' },
+  gl_execute:{ name: '단두대', icon: '⚔️', dmgMult: 2.9, executeBonus: 3.0, executeHp: 50, fxColor: '#ff3a3a',
+              desc: '[각성] 290% 피해. 적 HP가 50% 이하면 피해 3배.' },
+  gl_ult:   { name: '아수라', icon: '🔱', dmgMult: 1.25, hits: 6, fxColor: '#ff5e2b',
+              desc: '[각성 궁극기] 아수라의 6연격. 각 125% 피해.' },
+};
+
 /* ── 액티브 스킬 강화 (최대 100레벨, 비용이 가파르게 상승) ──
    효과: 레벨당 스킬 위력(피해/회복/보호막/버프/도트) +2% */
 DATA.skillUpgrade = {
@@ -239,71 +297,71 @@ DATA.monsters = {
   ],
   frost: [
     { id: 'slime_frost', name: '서리 슬라임',   kind: 'slime',    tint: '#7ad4ff', statMult: 1.5,  skills: ['m_tackle', 'm_spit'] },
-    { id: 'bat_blizzard',name: '눈보라 박쥐',   kind: 'bat',      tint: '#b0e0ff', statMult: 1.4,  skills: ['m_tackle', 'm_bite', 'm_spit'] },
+    { id: 'wolf_frost',  name: '설원 늑대',     kind: 'wolf',     tint: '#b0e0ff', statMult: 1.45, skills: ['m_tackle', 'm_bite', 'm_spit'] },
     { id: 'ghost_ice',   name: '얼음 유령',     kind: 'ghost',    tint: '#a0d8ff', statMult: 1.55, skills: ['m_tackle', 'm_curse', 'm_spit'] },
     { id: 'golem_glacier',name: '빙하 골렘',    kind: 'golem',    tint: '#6bb5e8', statMult: 1.9,  miniBoss: true, scale: 1.2,
       skills: ['m_tackle', 'm_harden', 'm_slam'] },
   ],
   ruins: [
-    { id: 'imp_sand',    name: '모래 임프',     kind: 'imp',      tint: '#d8b06b', statMult: 1.6,  skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'mummy_ruin',  name: '유적의 미라',   kind: 'mummy',    tint: '#d8b06b', statMult: 1.6,  skills: ['m_tackle', 'm_bite', 'm_curse'] },
     { id: 'golem_ruin',  name: '유적 골렘',     kind: 'golem',    tint: '#b09a6b', statMult: 1.75, skills: ['m_tackle', 'm_harden', 'm_slam'] },
-    { id: 'mush_cursed', name: '저주받은 버섯', kind: 'mushroom', tint: '#9a6bd8', statMult: 1.65, skills: ['m_tackle', 'm_spore', 'm_poison'] },
+    { id: 'mummy_king',  name: '파라오의 원혼', kind: 'mummy',    tint: '#c9a03a', statMult: 1.7,  skills: ['m_tackle', 'm_curse', 'm_poison'] },
     { id: 'dragon_ancient',name: '고대 수호룡', kind: 'dragon',   tint: '#d8c04a', statMult: 2.1,  miniBoss: true, scale: 1.25,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   abyss: [
-    { id: 'slime_deep',  name: '심해 슬라임',   kind: 'slime',    tint: '#2b6bd8', statMult: 1.75, skills: ['m_tackle', 'm_spit', 'm_harden'] },
-    { id: 'bat_abyss',   name: '심연 박쥐',     kind: 'bat',      tint: '#4a4ad8', statMult: 1.65, skills: ['m_tackle', 'm_bite', 'm_curse'] },
-    { id: 'ghost_trench',name: '해구 유령',     kind: 'ghost',    tint: '#2bd8d8', statMult: 1.8,  skills: ['m_tackle', 'm_curse', 'm_poison'] },
-    { id: 'golem_deep',  name: '심해 골렘',     kind: 'golem',    tint: '#2b4a9a', statMult: 2.2,  miniBoss: true, scale: 1.25,
+    { id: 'jelly_abyss', name: '심해 해파리',   kind: 'jellyfish', tint: '#2b6bd8', statMult: 1.75, skills: ['m_tackle', 'm_spit', 'm_poison'] },
+    { id: 'jelly_lumen', name: '발광 해파리',   kind: 'jellyfish', tint: '#2bd8d8', statMult: 1.65, skills: ['m_tackle', 'm_spit', 'm_curse'] },
+    { id: 'ghost_trench',name: '해구 유령',     kind: 'ghost',    tint: '#4a4ad8', statMult: 1.8,  skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'kraken_deep', name: '심해의 크라켄', kind: 'kraken',   tint: '#2b4a9a', statMult: 2.2,  miniBoss: true, scale: 1.25,
       skills: ['m_tackle', 'm_harden', 'm_slam'] },
   ],
   sky: [
     { id: 'slime_cloud', name: '구름 슬라임',   kind: 'slime',    tint: '#e8e8ff', statMult: 1.9,  skills: ['m_tackle', 'm_spit'] },
-    { id: 'imp_storm',   name: '폭풍 임프',     kind: 'imp',      tint: '#7a9aff', statMult: 2.0,  skills: ['m_tackle', 'm_bite', 'm_burn'] },
-    { id: 'ghost_sky',   name: '하늘 유령',     kind: 'ghost',    tint: '#c9e8ff', statMult: 1.95, skills: ['m_tackle', 'm_curse', 'm_spit'] },
+    { id: 'bird_storm',  name: '폭풍 새',       kind: 'bird',     tint: '#7a9aff', statMult: 2.0,  skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'bird_gale',   name: '질풍 매',       kind: 'bird',     tint: '#c9e8ff', statMult: 1.95, skills: ['m_tackle', 'm_bite', 'm_spit'] },
     { id: 'dragon_wyvern',name: '창공의 와이번', kind: 'dragon',  tint: '#6bc9ff', statMult: 2.5,  boss: true, scale: 1.4,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   rift: [
-    { id: 'imp_rift',    name: '균열 임프',     kind: 'imp',      tint: '#d84aff', statMult: 2.1,  skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'eye_rift',    name: '균열의 감시자', kind: 'eyeball',  tint: '#d84aff', statMult: 2.1,  skills: ['m_tackle', 'm_curse', 'm_burn'] },
     { id: 'mush_warp',   name: '왜곡 버섯',     kind: 'mushroom', tint: '#ff4ad8', statMult: 2.05, skills: ['m_tackle', 'm_spore', 'm_poison'] },
-    { id: 'ghost_void',  name: '공허 유령',     kind: 'ghost',    tint: '#8a2bff', statMult: 2.2,  skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'eye_horror',  name: '차원의 공포',   kind: 'eyeball',  tint: '#8a2bff', statMult: 2.2,  skills: ['m_tackle', 'm_curse', 'm_poison'] },
     { id: 'dragon_devourer',name: '차원 포식자', kind: 'dragon',  tint: '#b02bff', statMult: 2.7,  boss: true, scale: 1.45,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   divine: [
     { id: 'golem_holy',  name: '신성 골렘',     kind: 'golem',    tint: '#ffe89a', statMult: 2.3,  skills: ['m_tackle', 'm_harden', 'm_slam'] },
-    { id: 'ghost_celest',name: '천상 유령',     kind: 'ghost',    tint: '#fff0c9', statMult: 2.2,  skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'angel_garden',name: '정원의 천사상', kind: 'angel',    tint: '#fff0c9', statMult: 2.2,  skills: ['m_tackle', 'm_curse', 'm_burn'] },
     { id: 'imp_light',   name: '빛의 임프',     kind: 'imp',      tint: '#ffd84a', statMult: 2.25, skills: ['m_tackle', 'm_bite', 'm_burn'] },
     { id: 'dragon_seraph',name: '신수 세라핌',  kind: 'dragon',   tint: '#ffe86b', statMult: 2.9,  boss: true, scale: 1.5,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   origin: [
-    { id: 'slime_primal',name: '태초 슬라임',   kind: 'slime',    tint: '#ff6bb5', statMult: 2.45, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'bird_phoenix',name: '태초의 불새',   kind: 'bird',     tint: '#ff6b3a', statMult: 2.45, skills: ['m_tackle', 'm_burn', 'm_bite'] },
     { id: 'golem_primal',name: '원시 골렘',     kind: 'golem',    tint: '#ff9a4a', statMult: 2.6,  skills: ['m_tackle', 'm_harden', 'm_slam'] },
     { id: 'ghost_chaos', name: '혼돈 유령',     kind: 'ghost',    tint: '#ff4a6b', statMult: 2.5,  skills: ['m_tackle', 'm_curse', 'm_burn', 'm_poison'] },
     { id: 'dragon_god',  name: '태초의 용신',   kind: 'dragon',   tint: '#ff2b4a', statMult: 3.3,  boss: true, scale: 1.6,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   starfall: [
-    { id: 'slime_star',  name: '별빛 슬라임',   kind: 'slime',    tint: '#b0c9ff', statMult: 2.6, skills: ['m_tackle', 'm_spit', 'm_harden'] },
-    { id: 'bat_meteor',  name: '유성 박쥐',     kind: 'bat',      tint: '#7a9aff', statMult: 2.5, skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'star_living', name: '살아있는 별',   kind: 'star',     tint: '#b0c9ff', statMult: 2.6, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'star_fallen', name: '추락한 별',     kind: 'star',     tint: '#ffd86b', statMult: 2.5, skills: ['m_tackle', 'm_burn', 'm_curse'] },
     { id: 'golem_stardust', name: '성진 골렘',  kind: 'golem',    tint: '#9ab0ff', statMult: 2.75, skills: ['m_tackle', 'm_harden', 'm_slam'] },
     { id: 'dragon_comet', name: '혜성 드레이크', kind: 'dragon',  tint: '#6b8aff', statMult: 3.1, miniBoss: true, scale: 1.3,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   voidsea: [
-    { id: 'slime_void',  name: '공허 슬라임',   kind: 'slime',    tint: '#5e3ad8', statMult: 2.8, skills: ['m_tackle', 'm_spit', 'm_curse'] },
-    { id: 'imp_abyssal', name: '심연 임프',     kind: 'imp',      tint: '#4a2bd8', statMult: 2.75, skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'kraken_void', name: '공허의 크라켄', kind: 'kraken',   tint: '#5e3ad8', statMult: 2.8, skills: ['m_tackle', 'm_spit', 'm_curse'] },
+    { id: 'jelly_void',  name: '공허 해파리',   kind: 'jellyfish', tint: '#4a2bd8', statMult: 2.75, skills: ['m_tackle', 'm_spit', 'm_curse'] },
     { id: 'ghost_null',  name: '무(無)의 유령', kind: 'ghost',    tint: '#6b4aff', statMult: 2.9, skills: ['m_tackle', 'm_curse', 'm_poison'] },
-    { id: 'dragon_leviathan', name: '공허 리바이어선', kind: 'dragon', tint: '#3a16b0', statMult: 3.5, boss: true, scale: 1.5,
+    { id: 'kraken_leviathan', name: '공허 리바이어선', kind: 'kraken', tint: '#3a16b0', statMult: 3.5, boss: true, scale: 1.5,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   eclipse: [
-    { id: 'ghost_eclipse', name: '일식 유령',   kind: 'ghost',    tint: '#4a4a5e', statMult: 3.0, skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'reaper_eclipse', name: '일식의 사신', kind: 'reaper',  tint: '#4a4a5e', statMult: 3.0, skills: ['m_tackle', 'm_curse', 'm_burn'] },
     { id: 'golem_shadow', name: '그림자 골렘',  kind: 'golem',    tint: '#3a3a4a', statMult: 3.15, skills: ['m_tackle', 'm_harden', 'm_slam'] },
-    { id: 'mush_dark',   name: '암흑 버섯',     kind: 'mushroom', tint: '#5e4a6b', statMult: 3.0, skills: ['m_tackle', 'm_spore', 'm_poison'] },
+    { id: 'reaper_umbral', name: '그림자 수확자', kind: 'reaper', tint: '#5e4a6b', statMult: 3.0, skills: ['m_tackle', 'm_curse', 'm_poison'] },
     { id: 'dragon_umbra', name: '일식의 흑룡',  kind: 'dragon',   tint: '#2b2b3d', statMult: 3.7, boss: true, scale: 1.5,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
@@ -316,15 +374,15 @@ DATA.monsters = {
   ],
   pantheon: [
     { id: 'golem_idol',  name: '신전 수호상',   kind: 'golem',    tint: '#e8d8b0', statMult: 3.4, skills: ['m_tackle', 'm_harden', 'm_slam'] },
-    { id: 'ghost_oracle', name: '신탁 유령',    kind: 'ghost',    tint: '#fff0d8', statMult: 3.35, skills: ['m_tackle', 'm_curse', 'm_burn'] },
-    { id: 'imp_smite',   name: '천벌 임프',     kind: 'imp',      tint: '#ffd86b', statMult: 3.45, skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'angel_oracle', name: '신탁의 천사',  kind: 'angel',    tint: '#fff0d8', statMult: 3.35, skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'angel_wrath', name: '천벌의 천사',   kind: 'angel',    tint: '#ffd86b', statMult: 3.45, skills: ['m_tackle', 'm_bite', 'm_burn'] },
     { id: 'dragon_fallen', name: '타락한 신',   kind: 'dragon',   tint: '#d8b04a', statMult: 4.1, boss: true, scale: 1.6,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   genesis: [
-    { id: 'slime_genesis', name: '창세 슬라임', kind: 'slime',    tint: '#f0f0ff', statMult: 3.6, skills: ['m_tackle', 'm_spit', 'm_harden'] },
-    { id: 'ghost_origin', name: '기원의 유령',  kind: 'ghost',    tint: '#ffe8ff', statMult: 3.55, skills: ['m_tackle', 'm_curse', 'm_poison'] },
-    { id: 'golem_creation', name: '창세 골렘',  kind: 'golem',    tint: '#d8c9ff', statMult: 3.7, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'core_genesis', name: '창세의 코어',  kind: 'core',     tint: '#f0f0ff', statMult: 3.6, skills: ['m_tackle', 'm_spit', 'm_harden'] },
+    { id: 'eye_origin',  name: '태초의 관측자', kind: 'eyeball',  tint: '#ffe8ff', statMult: 3.55, skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'core_creation', name: '창조의 결정', kind: 'core',     tint: '#d8c9ff', statMult: 3.7, skills: ['m_tackle', 'm_harden', 'm_slam'] },
     { id: 'dragon_creator', name: '창조주의 그림자', kind: 'dragon', tint: '#e83aff', statMult: 4.5, boss: true, scale: 1.7,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
@@ -520,6 +578,8 @@ DATA.achievements = [];
   [[50, '수련생', 100], [150, '숙련자', 250], [300, '무술 종사', 500]]
     .forEach(([n, name, r]) => add(`a_skillsum${n}`, '스킬', name, '📖', `액티브 스킬 레벨 합계 ${n}`, s => skillLvSum(s) >= n, r));
   add('a_skill100', '스킬', '극의에 달한 자', '📖', '스킬 하나를 Lv.100 달성', s => Object.values(s.skillLevels || {}).some(v => v >= 100), 800);
+  add('a_awaken1', '스킬', '각성의 시작', '🌠', '스킬 각성 1회', s => Object.keys(s.skillAwakened || {}).length >= 1, 500);
+  add('a_awaken4', '스킬', '초월자', '🌠', '모든 스킬 각성 (4개)', s => Object.keys(s.skillAwakened || {}).length >= 4, 1500);
 
   /* 패시브 (3) */
   const passiveLvSum = s => Object.values(s.passiveLevels || {}).reduce((a, b) => a + b, 0);

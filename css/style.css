@@ -732,6 +732,29 @@ canvas { image-rendering: pixelated; }
 .ach-cat[open] .ach-cat-head::before { content: '▾ '; }
 .ach-cat .ach-list { margin-top: 8px; padding-left: 6px; }
 
+/* 스킬 각성 */
+.awakened-card { border-color: var(--exp) !important; box-shadow: 0 0 14px rgba(176,78,240,.25); }
+.awakened-icon { border-color: var(--exp) !important; box-shadow: 0 0 12px rgba(176,78,240,.45); }
+.awaken-tag {
+  font-size: 10px; color: #e8b0ff; border: 1px solid var(--exp);
+  border-radius: 4px; padding: 1px 5px; margin-left: 6px;
+  text-shadow: 0 0 6px rgba(176,78,240,.8);
+}
+.awaken-box {
+  margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+  border: 1px dashed rgba(176,78,240,.45); background: rgba(176,78,240,.05);
+  font-size: 11px;
+}
+.awaken-box.locked { color: var(--text-dim); border-color: var(--line); background: rgba(0,0,0,.2); }
+.awaken-preview { color: var(--text-dim); line-height: 1.6; margin-bottom: 7px; }
+.awaken-preview b { color: #e8b0ff; }
+.btn-awaken {
+  border-color: var(--exp);
+  background: linear-gradient(180deg, #6b2b9a, #3d1a5e);
+  color: #f0d8ff;
+  animation: achPulse 1.4s ease-in-out infinite;
+}
+
 /* 건의사항 */
 .suggest-card { max-width: 640px; }
 #suggest-text {
