@@ -56,6 +56,189 @@ function toDelta(value) {
   return Math.trunc(Math.max(-1000000000, Math.min(1000000000, n)));
 }
 
+const SAVE_LIMITS = {
+  maxBytes: 1500000,
+  maxCurrency: 2000000000,
+  maxCounter: 1000000000,
+  maxInventory: 10000,
+  maxObjectKeys: 500,
+  maxString: 80,
+};
+
+const SAVE_TOP_KEYS = new Set([
+  'name', 'classId', 'level', 'exp', 'gold', 'stones', 'gems', 'tomes', 'awakenStones',
+  'skillPoints', 'passiveLevels', 'skillLevels', 'skillAwakened', 'materials', 'runes',
+  'skillRunes', 'potions', 'inventory', 'equipped', 'nextUid', 'kills', 'deaths',
+  'curHp', 'curMp', 'pets', 'activePet', 'rebirths', 'rebirthPts', 'bestFloor', 'pity',
+  'codex', 'achievementsClaimed', 'counters', 'daily', 'passives',
+]);
+const CLASS_IDS = new Set(['knight', 'rogue', 'merchant', 'mage', 'gladiator']);
+const EQUIP_SLOTS = new Set(['weapon', 'armor', 'helmet', 'gloves', 'accessory']);
+const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legend']);
+const STAT_KEYS = new Set(['hp', 'mp', 'atk', 'def', 'critRate', 'critDmg']);
+const SAFE_ID_RE = /^[a-zA-Z0-9_:-]{1,80}$/;
+
+function isPlainObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isSafeString(value, max = SAVE_LIMITS.maxString) {
+  return typeof value === 'string' &&
+    value.length <= max &&
+    !/[<>\u0000-\u001f\u007f]/.test(value);
+}
+
+function validInteger(value, min, max) {
+  return Number.isInteger(value) && value >= min && value <= max;
+}
+
+function validateIdMap(value, label, maxValue = SAVE_LIMITS.maxCounter) {
+  if (value === undefined) return null;
+  if (!isPlainObject(value)) return `${label} must be an object`;
+  const entries = Object.entries(value);
+  if (entries.length > SAVE_LIMITS.maxObjectKeys) return `${label} has too many entries`;
+  for (const [key, count] of entries) {
+    if (!SAFE_ID_RE.test(key)) return `${label} has an invalid key`;
+    if (!validInteger(count, 0, maxValue)) return `${label}.${key} must be an integer from 0 to ${maxValue}`;
+  }
+  return null;
+}
+
+function validateStringArray(value, label, maxItems = 300) {
+  if (value === undefined) return null;
+  if (!Array.isArray(value)) return `${label} must be an array`;
+  if (value.length > maxItems) return `${label} has too many entries`;
+  for (const item of value) {
+    if (!isSafeString(item)) return `${label} contains an invalid string`;
+  }
+  return null;
+}
+
+function validateInventory(inventory) {
+  if (!Array.isArray(inventory)) return 'inventory must be an array';
+  if (inventory.length > SAVE_LIMITS.maxInventory) return `inventory can contain at most ${SAVE_LIMITS.maxInventory} items`;
+
+  const seen = new Set();
+  for (const item of inventory) {
+    if (!isPlainObject(item)) return 'inventory item must be an object';
+    if (!validInteger(item.uid, 1, SAVE_LIMITS.maxCounter)) return 'inventory item uid is invalid';
+    if (seen.has(item.uid)) return 'inventory contains duplicate uid';
+    seen.add(item.uid);
+    if (!EQUIP_SLOTS.has(item.slot)) return 'inventory item slot is invalid';
+    if (!RARITIES.has(item.rarity)) return 'inventory item rarity is invalid';
+    if (!STAT_KEYS.has(item.mainStat)) return 'inventory item mainStat is invalid';
+    if (!validInteger(item.mainValue, 0, 10000000)) return 'inventory item mainValue is invalid';
+    if (!validInteger(item.enhance ?? 0, 0, 20)) return 'inventory item enhance is invalid';
+    for (const key of ['typeName', 'name', 'rarityName', 'icon']) {
+      if (item[key] !== undefined && !isSafeString(item[key])) return `inventory item ${key} is invalid`;
+    }
+    if (item.subOpts !== undefined) {
+      if (!Array.isArray(item.subOpts) || item.subOpts.length > 6) return 'inventory item subOpts is invalid';
+      for (const opt of item.subOpts) {
+        if (!Array.isArray(opt) || opt.length !== 2 || !STAT_KEYS.has(opt[0]) || !validInteger(opt[1], 0, 10000000)) {
+          return 'inventory item subOpt is invalid';
+        }
+      }
+    }
+    if (item.runes !== undefined) {
+      const err = validateStringArray(item.runes, 'inventory item runes', 2);
+      if (err) return err;
+    }
+  }
+  return null;
+}
+
+function validateSaveData(save) {
+  let encoded;
+  try {
+    encoded = JSON.stringify(save);
+  } catch {
+    return { ok: false, error: 'save must be JSON serializable' };
+  }
+  if (!encoded || encoded.length > SAVE_LIMITS.maxBytes) {
+    return { ok: false, error: `save is too large; max ${SAVE_LIMITS.maxBytes} bytes` };
+  }
+
+  for (const key of Object.keys(save)) {
+    if (!SAVE_TOP_KEYS.has(key)) return { ok: false, error: `unknown save field: ${key}` };
+  }
+  if (!isSafeString(save.name, 30)) return { ok: false, error: 'name is invalid' };
+  if (!CLASS_IDS.has(save.classId)) return { ok: false, error: 'classId is invalid' };
+
+  const integerChecks = [
+    ['level', 1, 500], ['exp', 0, 1000000000000], ['gold', 0, SAVE_LIMITS.maxCurrency],
+    ['stones', 0, SAVE_LIMITS.maxCurrency], ['gems', 0, SAVE_LIMITS.maxCurrency],
+    ['tomes', 0, SAVE_LIMITS.maxCurrency], ['awakenStones', 0, SAVE_LIMITS.maxCurrency],
+    ['skillPoints', 0, SAVE_LIMITS.maxCurrency], ['nextUid', 1, SAVE_LIMITS.maxCounter],
+    ['kills', 0, SAVE_LIMITS.maxCounter], ['deaths', 0, SAVE_LIMITS.maxCounter],
+    ['curHp', 0, SAVE_LIMITS.maxCurrency], ['curMp', 0, SAVE_LIMITS.maxCurrency],
+    ['rebirths', 0, SAVE_LIMITS.maxCounter], ['rebirthPts', 0, SAVE_LIMITS.maxCurrency],
+    ['bestFloor', 0, 1000000],
+  ];
+  for (const [key, min, max] of integerChecks) {
+    if (!validInteger(save[key], min, max)) return { ok: false, error: `${key} must be an integer from ${min} to ${max}` };
+  }
+
+  if (save.activePet !== null && save.activePet !== undefined && !isSafeString(save.activePet)) {
+    return { ok: false, error: 'activePet is invalid' };
+  }
+  for (const [field, maxValue] of [
+    ['passiveLevels', 100], ['skillLevels', 100], ['materials', SAVE_LIMITS.maxCurrency],
+    ['runes', SAVE_LIMITS.maxCurrency], ['codex', SAVE_LIMITS.maxCounter],
+    ['counters', SAVE_LIMITS.maxCounter], ['pity', SAVE_LIMITS.maxCounter],
+  ]) {
+    const err = validateIdMap(save[field], field, maxValue);
+    if (err) return { ok: false, error: err };
+  }
+  if (save.skillAwakened !== undefined) {
+    if (!isPlainObject(save.skillAwakened)) return { ok: false, error: 'skillAwakened must be an object' };
+    for (const [key, value] of Object.entries(save.skillAwakened)) {
+      if (!SAFE_ID_RE.test(key) || value !== true) return { ok: false, error: 'skillAwakened is invalid' };
+    }
+  }
+  if (save.skillRunes !== undefined) {
+    if (!isPlainObject(save.skillRunes)) return { ok: false, error: 'skillRunes must be an object' };
+    for (const [key, value] of Object.entries(save.skillRunes)) {
+      if (!SAFE_ID_RE.test(key)) return { ok: false, error: 'skillRunes has an invalid key' };
+      const err = validateStringArray(value, `skillRunes.${key}`, 2);
+      if (err) return { ok: false, error: err };
+    }
+  }
+  if (save.pets !== undefined) {
+    if (!isPlainObject(save.pets)) return { ok: false, error: 'pets must be an object' };
+    for (const [key, pet] of Object.entries(save.pets)) {
+      if (!SAFE_ID_RE.test(key) || !isPlainObject(pet)) return { ok: false, error: 'pets is invalid' };
+      if (!validInteger(pet.level, 1, 100) || !validInteger(pet.count, 0, SAVE_LIMITS.maxCounter)) {
+        return { ok: false, error: 'pet level/count is invalid' };
+      }
+    }
+  }
+  if (save.potions !== undefined) {
+    if (!isPlainObject(save.potions)) return { ok: false, error: 'potions must be an object' };
+    for (const key of ['hp', 'mp']) {
+      if (!validInteger(save.potions[key] ?? 0, 0, SAVE_LIMITS.maxCurrency)) return { ok: false, error: `potions.${key} is invalid` };
+    }
+  }
+  if (save.equipped !== undefined) {
+    if (!isPlainObject(save.equipped)) return { ok: false, error: 'equipped must be an object' };
+    for (const slot of EQUIP_SLOTS) {
+      const uid = save.equipped[slot];
+      if (uid !== null && uid !== undefined && !validInteger(uid, 1, SAVE_LIMITS.maxCounter)) {
+        return { ok: false, error: `equipped.${slot} is invalid` };
+      }
+    }
+  }
+  const inventoryErr = validateInventory(save.inventory);
+  if (inventoryErr) return { ok: false, error: inventoryErr };
+  for (const [field, maxItems] of [['achievementsClaimed', 500], ['passives', 100]]) {
+    const err = validateStringArray(save[field], field, maxItems);
+    if (err) return { ok: false, error: err };
+  }
+  if (save.daily !== undefined && !isPlainObject(save.daily)) return { ok: false, error: 'daily must be an object' };
+
+  return { ok: true };
+}
+
 async function logUserEvent(userId, action, detail = {}) {
   await pool.query(
     'INSERT INTO user_logs (user_id, action, detail) VALUES ($1, $2, $3::jsonb)',
@@ -228,6 +411,10 @@ app.put('/api/save', auth, async (req, res) => {
   const save = req.body.save;
   if (!save || typeof save !== 'object' || Array.isArray(save)) {
     return res.status(400).json({ error: 'save must be an object' });
+  }
+  const validation = validateSaveData(save);
+  if (!validation.ok) {
+    return res.status(400).json({ error: validation.error });
   }
 
   await pool.query(
