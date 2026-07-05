@@ -94,6 +94,14 @@ const Auth = {
     });
   },
 
+  async buyShopItem(shopId) {
+    if (!this.token) throw new Error('login required');
+    return await this.request('/api/shop/buy', {
+      method: 'POST',
+      body: JSON.stringify({ shopId }),
+    });
+  },
+
   async deleteSave() {
     if (!this.token) return;
     await this.request('/api/save', { method: 'DELETE' });

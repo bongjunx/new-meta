@@ -77,6 +77,13 @@ const EQUIP_SLOTS = new Set(['weapon', 'armor', 'helmet', 'gloves', 'accessory']
 const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legend']);
 const STAT_KEYS = new Set(['hp', 'mp', 'atk', 'def', 'critRate', 'critDmg']);
 const SAFE_ID_RE = /^[a-zA-Z0-9_:-]{1,80}$/;
+const SHOP_ITEMS = {
+  potion_hp: { currency: 'gold', price: 30, reward: { type: 'potion', key: 'hp', count: 1 } },
+  potion_mp: { currency: 'gold', price: 35, reward: { type: 'potion', key: 'mp', count: 1 } },
+  stone: { currency: 'gold', price: 5000, reward: { type: 'field', key: 'stones', count: 1 } },
+  gem_pack: { currency: 'gold', price: 100000, reward: { type: 'field', key: 'gems', count: 40 } },
+  tome: { currency: 'gems', price: 150, reward: { type: 'field', key: 'tomes', count: 1 } },
+};
 
 function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
@@ -237,6 +244,80 @@ function validateSaveData(save) {
   if (save.daily !== undefined && !isPlainObject(save.daily)) return { ok: false, error: 'daily must be an object' };
 
   return { ok: true };
+}
+
+function shopDiscountPct(save) {
+  const level = Number(save?.passiveLevels?.p_thrift || 0);
+  if (!Number.isFinite(level)) return 0;
+  return Math.max(0, Math.min(100, Math.trunc(level))) * 0.25;
+}
+
+function serverShopPrice(save, item) {
+  if (item.currency === 'gems') return item.price;
+  return Math.max(1, Math.round(item.price * (1 - shopDiscountPct(save) / 100)));
+}
+
+function applyShopReward(save, reward) {
+  if (reward.type === 'potion') {
+    if (!isPlainObject(save.potions)) save.potions = { hp: 0, mp: 0 };
+    save.potions[reward.key] = Math.trunc(Number(save.potions[reward.key] || 0)) + reward.count;
+    return;
+  }
+  save[reward.key] = Math.trunc(Number(save[reward.key] || 0)) + reward.count;
+}
+
+function normalizeServerSave(save) {
+  const defaults = {
+    exp: 0,
+    gold: 0,
+    stones: 0,
+    gems: 0,
+    tomes: 0,
+    awakenStones: 0,
+    skillPoints: 0,
+    passiveLevels: {},
+    skillLevels: {},
+    skillAwakened: {},
+    materials: {},
+    runes: {},
+    skillRunes: {},
+    potions: { hp: 0, mp: 0 },
+    inventory: [],
+    equipped: { weapon: null, armor: null, helmet: null, gloves: null, accessory: null },
+    nextUid: 1,
+    kills: 0,
+    deaths: 0,
+    curHp: 0,
+    curMp: 0,
+    pets: {},
+    activePet: null,
+    rebirths: 0,
+    rebirthPts: 0,
+    bestFloor: 0,
+    pity: { equip: 0, pet: 0 },
+    codex: {},
+    achievementsClaimed: [],
+    counters: {},
+    daily: {},
+  };
+
+  for (const [key, value] of Object.entries(defaults)) {
+    if (save[key] === undefined) save[key] = structuredClone(value);
+  }
+  if (!isPlainObject(save.potions)) save.potions = { hp: 0, mp: 0 };
+  if (save.potions.hp === undefined) save.potions.hp = 0;
+  if (save.potions.mp === undefined) save.potions.mp = 0;
+  if (!isPlainObject(save.equipped)) save.equipped = structuredClone(defaults.equipped);
+  for (const slot of EQUIP_SLOTS) {
+    if (save.equipped[slot] === undefined) save.equipped[slot] = null;
+  }
+  if (Array.isArray(save.passives)) {
+    if (!isPlainObject(save.passiveLevels)) save.passiveLevels = {};
+    for (const pid of save.passives) {
+      if (SAFE_ID_RE.test(pid) && !save.passiveLevels[pid]) save.passiveLevels[pid] = 10;
+    }
+    delete save.passives;
+  }
 }
 
 async function logUserEvent(userId, action, detail = {}) {
@@ -432,6 +513,74 @@ app.delete('/api/save', auth, async (req, res) => {
   await pool.query('DELETE FROM game_saves WHERE user_id = $1', [req.user.id]);
   await logUserEvent(req.user.id, 'save:delete');
   res.json({ ok: true });
+});
+
+app.post('/api/shop/buy', auth, async (req, res) => {
+  const shopId = String(req.body.shopId || '').trim();
+  const item = SHOP_ITEMS[shopId];
+  if (!item) return res.status(400).json({ error: 'invalid shop item' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'SELECT save_data FROM game_saves WHERE user_id = $1 FOR UPDATE',
+      [req.user.id],
+    );
+    if (!rows.length || !rows[0].save_data) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'game save is required before buying shop items' });
+    }
+
+    const save = rows[0].save_data;
+    normalizeServerSave(save);
+    const beforeValidation = validateSaveData(save);
+    if (!beforeValidation.ok) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `current save is invalid: ${beforeValidation.error}` });
+    }
+
+    const price = serverShopPrice(save, item);
+    const balance = Math.trunc(Number(save[item.currency] || 0));
+    if (balance < price) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `${item.currency} is not enough` });
+    }
+
+    save[item.currency] = balance - price;
+    applyShopReward(save, item.reward);
+
+    const afterValidation = validateSaveData(save);
+    if (!afterValidation.ok) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `purchase result is invalid: ${afterValidation.error}` });
+    }
+
+    await client.query(
+      'UPDATE game_saves SET save_data = $2::jsonb, updated_at = NOW() WHERE user_id = $1',
+      [req.user.id, JSON.stringify(save)],
+    );
+    await client.query(
+      'INSERT INTO user_logs (user_id, action, detail) VALUES ($1, $2, $3::jsonb)',
+      [req.user.id, 'shop:buy', JSON.stringify({ shopId, currency: item.currency, price })],
+    );
+    await client.query('COMMIT');
+    res.json({
+      ok: true,
+      save,
+      purchase: {
+        shopId,
+        currency: item.currency,
+        price,
+      },
+    });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    console.error(err);
+    res.status(500).json({ error: 'shop purchase failed' });
+  } finally {
+    client.release();
+  }
 });
 
 /* ── 건의사항 (유저 → 운영자 단방향) ── */

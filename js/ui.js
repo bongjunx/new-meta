@@ -1053,8 +1053,8 @@ const UI = {
     html += `</div>`;
     el.innerHTML = html;
 
-    el.querySelectorAll('.btn-buy').forEach(b => b.addEventListener('click', () => {
-      if (Game.buyItem(b.dataset.id)) {
+    el.querySelectorAll('.btn-buy').forEach(b => b.addEventListener('click', async () => {
+      if (await Game.buyItem(b.dataset.id)) {
         this.toast('구매 완료!');
         this.renderAll();
       } else this.toast('재화가 부족합니다!');

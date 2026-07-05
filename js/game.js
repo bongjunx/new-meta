@@ -684,7 +684,26 @@ const Game = {
     return Math.max(1, Math.round(def.price * (1 - disc / 100)));
   },
 
-  buyItem(shopId) {
+  applyServerSave(save) {
+    if (!save) return false;
+    try {
+      this.state = save;
+      this.migrate();
+      localStorage.setItem(SAVE_KEY, JSON.stringify(this.state));
+      return true;
+    } catch (e) { return false; }
+  },
+
+  async buyItem(shopId) {
+    if (window.Auth && Auth.token) {
+      try {
+        const data = await Auth.buyShopItem(shopId);
+        return this.applyServerSave(data.save);
+      } catch (e) {
+        return false;
+      }
+    }
+
     const def = DATA.shopItems.find(s => s.id === shopId);
     if (!def) return false;
     const price = this.shopPrice(def);
