@@ -715,8 +715,8 @@ DATA.achievements = [];
 DATA.shopItems = [
   { id: 'potion_hp', name: 'HP 물약', icon: '🧪', price: 30,  desc: 'HP를 최대치의 40% 회복한다. 전투 중 사용 가능.' },
   { id: 'potion_mp', name: 'MP 물약', icon: '🔮', price: 35,  desc: 'MP를 최대치의 50% 회복한다. 전투 중 사용 가능.' },
-  { id: 'stone',     name: '강화석', icon: '💎', price: 120, desc: '장비 강화에 필요한 신비한 돌.' },
-  { id: 'gem_pack',  name: '다이아 주머니', icon: '💠', price: 1500, desc: '다이아 40개가 든 주머니. 골드 부자를 위한 상품.' },
+  { id: 'stone',     name: '강화석', icon: '💎', price: 5000, desc: '장비 강화에 필요한 신비한 돌.' },
+  { id: 'gem_pack',  name: '다이아 주머니', icon: '💠', price: 100000, desc: '다이아 40개가 든 주머니. 골드 부자를 위한 상품.' },
   { id: 'tome',      name: '스킬의 서', icon: '📖', price: 150, currency: 'gems', desc: '액티브 스킬 강화에 필요한 고대의 책. 보스와 탑에서도 드랍된다.' },
 ];
 
