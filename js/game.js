@@ -57,7 +57,7 @@ const Game = {
       achievementsClaimed: [],
       counters: { gachaCount: 0, maxEnhance: 0, legendOwned: 0, suggestions: 0, dailyRuns: 0,
                   crafted: 0, combined: 0, runesFused: 0 },
-      settings: { autoNoSkills: false },
+      settings: { autoNoSkills: false, disabledAutoSkills: [] },
       daily: { date: '', loginClaimed: false, runs: {} },
     };
   },
@@ -89,6 +89,14 @@ const Game = {
     for (const [k, v] of Object.entries(d.counters)) {
       if (this.state.counters[k] === undefined) this.state.counters[k] = v;
     }
+    if (!this.state.settings || typeof this.state.settings !== 'object' || Array.isArray(this.state.settings)) {
+      this.state.settings = { ...d.settings };
+    }
+    if (typeof this.state.settings.autoNoSkills !== 'boolean') this.state.settings.autoNoSkills = false;
+    if (!Array.isArray(this.state.settings.disabledAutoSkills)) this.state.settings.disabledAutoSkills = [];
+    this.state.settings.disabledAutoSkills = [...new Set(this.state.settings.disabledAutoSkills)]
+      .filter(sid => typeof sid === 'string' && DATA.skills[sid])
+      .slice(0, 20);
     if (!this.state.pity) this.state.pity = d.pity;
     if (!this.state.daily) this.state.daily = d.daily;
     /* v3: 이진 습득 패시브 → 레벨제 패시브 (기존 습득 = 10레벨 인정) */

@@ -111,6 +111,7 @@ const AutoBattle = {
 
   canUseSkill(skill) {
     if (!skill || skill.curCd > 0) return false;
+    if ((Game.state.settings?.disabledAutoSkills || []).includes(skill.id)) return false;
     if (Battle.player.mp < skill.mp) return false;
     if (skill.goldCost && Game.state.gold < skill.goldCost) return false;
     return true;

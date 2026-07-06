@@ -247,6 +247,16 @@ const UI = {
     if (!window.AutoBattle) return;
     const unlockedZones = DATA.zones.filter(z => !Game.zoneLockInfo(z));
     const selected = AutoBattle.mode?.zoneId || unlockedZones[unlockedZones.length - 1]?.id || 'plain';
+    const cls = DATA.classes[Game.state.classId];
+    const disabledAutoSkills = new Set(Game.state.settings?.disabledAutoSkills || []);
+    const autoSkillOptions = cls.skills.map(sid => {
+      const sk = DATA.skills[sid];
+      return `
+        <label class="auto-skill-lock">
+          <input type="checkbox" data-sid="${sid}" ${disabledAutoSkills.has(sid) ? 'checked' : ''}>
+          <span>${sk.icon} ${sk.name}</span>
+        </label>`;
+    }).join('');
     const panel = document.createElement('div');
     panel.className = 'card auto-panel';
     panel.innerHTML = `
@@ -261,6 +271,10 @@ const UI = {
         <input type="checkbox" id="auto-no-skills" ${Game.state.settings?.autoNoSkills ? 'checked' : ''}>
         스킬 사용 금지 (기본 공격만 사용, MP 절약)
       </label>
+      <div class="auto-skill-locks">
+        <div class="auto-skill-lock-title">자동전투에서 사용하지 않을 스킬</div>
+        <div class="auto-skill-lock-grid">${autoSkillOptions}</div>
+      </div>
       <div class="panel-sub" id="auto-village-status">${AutoBattle.enabled ? (AutoBattle.lastStatus || '진행 중') : '대기 중'}</div>
     `;
     el.appendChild(panel);
@@ -270,6 +284,18 @@ const UI = {
       Game.state.settings.autoNoSkills = e.target.checked;
       Game.save();
       this.toast(e.target.checked ? '🚫 자동 전투에서 스킬을 사용하지 않습니다.' : '✨ 자동 전투에서 스킬을 사용합니다.');
+    });
+
+    panel.querySelectorAll('.auto-skill-lock input').forEach(input => {
+      input.addEventListener('change', () => {
+        if (!Game.state.settings) Game.state.settings = {};
+        const disabled = new Set(Game.state.settings.disabledAutoSkills || []);
+        if (input.checked) disabled.add(input.dataset.sid);
+        else disabled.delete(input.dataset.sid);
+        Game.state.settings.disabledAutoSkills = cls.skills.filter(sid => disabled.has(sid));
+        Game.save();
+        this.toast('자동전투 스킬 사용 설정을 저장했습니다.');
+      });
     });
 
     panel.querySelector('#btn-auto-start').addEventListener('click', () => {

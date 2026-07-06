@@ -814,6 +814,17 @@ canvas { image-rendering: pixelated; }
   font-size: 12px; color: var(--text-dim); margin-top: 10px; cursor: pointer;
 }
 .auto-option input { accent-color: var(--gold); width: 15px; height: 15px; cursor: pointer; }
+.auto-skill-locks { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.auto-skill-lock-title { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+.auto-skill-lock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; }
+.auto-skill-lock {
+  display: flex; align-items: center; gap: 7px;
+  min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: rgba(255,255,255,.03); font-size: 12px; color: var(--text);
+  cursor: pointer;
+}
+.auto-skill-lock input { accent-color: var(--hp); width: 14px; height: 14px; cursor: pointer; }
+.auto-skill-lock span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 종언 지역 배경 (Lv.500~1000) */
 #stage-bg.zone-shatterway { background: linear-gradient(180deg, #05051f 0%, #10102b 40%, #3d3d8a 76%, #1f1f4a 100%); }

@@ -72,7 +72,7 @@ const SAVE_TOP_KEYS = new Set([
   'curHp', 'curMp', 'pets', 'activePet', 'rebirths', 'rebirthPts', 'bestFloor', 'pity',
   'codex', 'achievementsClaimed', 'counters', 'daily', 'passives', 'settings',
 ]);
-const SETTINGS_KEYS = new Set(['autoNoSkills']);
+const SETTINGS_KEYS = new Set(['autoNoSkills', 'disabledAutoSkills']);
 const CLASS_IDS = new Set(['knight', 'rogue', 'merchant', 'mage', 'gladiator']);
 const EQUIP_SLOTS = new Set(['weapon', 'armor', 'helmet', 'gloves', 'accessory']);
 const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legend']);
@@ -247,7 +247,13 @@ function validateSaveData(save) {
     if (!isPlainObject(save.settings)) return { ok: false, error: 'settings must be an object' };
     for (const [key, value] of Object.entries(save.settings)) {
       if (!SETTINGS_KEYS.has(key)) return { ok: false, error: `unknown settings field: ${key}` };
-      if (typeof value !== 'boolean') return { ok: false, error: `settings.${key} must be a boolean` };
+      if (key === 'autoNoSkills' && typeof value !== 'boolean') {
+        return { ok: false, error: 'settings.autoNoSkills must be a boolean' };
+      }
+      if (key === 'disabledAutoSkills') {
+        const err = validateStringArray(value, 'settings.disabledAutoSkills', 20);
+        if (err) return { ok: false, error: err };
+      }
     }
   }
 
@@ -306,6 +312,7 @@ function normalizeServerSave(save) {
     codex: {},
     achievementsClaimed: [],
     counters: {},
+    settings: { autoNoSkills: false, disabledAutoSkills: [] },
     daily: {},
   };
 
@@ -315,6 +322,9 @@ function normalizeServerSave(save) {
   if (!isPlainObject(save.potions)) save.potions = { hp: 0, mp: 0 };
   if (save.potions.hp === undefined) save.potions.hp = 0;
   if (save.potions.mp === undefined) save.potions.mp = 0;
+  if (!isPlainObject(save.settings)) save.settings = structuredClone(defaults.settings);
+  if (typeof save.settings.autoNoSkills !== 'boolean') save.settings.autoNoSkills = false;
+  if (!Array.isArray(save.settings.disabledAutoSkills)) save.settings.disabledAutoSkills = [];
   if (!isPlainObject(save.equipped)) save.equipped = structuredClone(defaults.equipped);
   for (const slot of EQUIP_SLOTS) {
     if (save.equipped[slot] === undefined) save.equipped[slot] = null;
