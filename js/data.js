@@ -791,6 +791,10 @@ DATA.monsterCurve = lv => {
   if (lv > 250) c *= 1 + Math.pow((lv - 250) / 50, 1.8);
   return c;
 };
+DATA.monsterHpCurve = lv => {
+  if (lv < 500) return DATA.monsterCurve(lv);
+  return 80800 * Math.pow(100, (lv - 500) / 100);
+};
 DATA.rewardCurve = lv => {
   let c = 1 + Math.pow(lv / 90, 1.4);
   if (lv > 250) c *= 1 + Math.pow((lv - 250) / 80, 1.4);

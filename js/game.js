@@ -796,6 +796,8 @@ const Game = {
   /* ── 몬스터 생성 (고레벨 곡선 적용) ── */
   buildMonster(def, level, statMult, zone, extra = {}) {
     const mult = statMult * DATA.monsterCurve(level);
+    const hpMult = statMult * DATA.monsterHpCurve(level);
+    const maxHp = Math.round((60 + level * 26) * hpMult);
     return {
       def,
       name: def.name,
@@ -806,8 +808,8 @@ const Game = {
       miniBoss: !!def.miniBoss,
       golden: !!def.golden,
       scale: def.scale || extra.scale || 1,
-      maxHp: Math.round((60 + level * 26) * mult),
-      hp: Math.round((60 + level * 26) * mult),
+      maxHp,
+      hp: maxHp,
       atk: Math.round((8 + level * 3.2) * mult),
       def: Math.round((2 + level * 1.4) * mult),
       critRate: 6,

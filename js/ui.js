@@ -1225,6 +1225,7 @@ const UI = {
     const disabled = Battle.busy || !Battle.active;
 
     p.skills.forEach((sk, idx) => {
+      const autoLocked = (Game.state.settings?.disabledAutoSkills || []).includes(sk.id);
       const btn = document.createElement('button');
       btn.className = `btn action-btn ${sk.ult ? 'ult-btn' : 'skill-btn'}`;
       const noMp = p.mp < sk.mp;
@@ -1234,8 +1235,21 @@ const UI = {
         <span class="ab-name">${sk.icon} ${sk.name}${sk.awakened ? '<span class="awaken-tag">✦</span>' : ''}${sk.level > 1 ? ` <span class="enh-tag">Lv.${sk.level}</span>` : ''}</span>
         <span class="ab-desc">MP ${sk.mp} · 쿨 ${sk.cd}턴${sk.goldCost ? ` · 🪙${sk.goldCost}` : ''}</span>
         ${sk.curCd > 0 ? `<span class="cd-overlay">⏳ ${sk.curCd}</span>` : ''}`;
+      btn.insertAdjacentHTML('beforeend', `<span class="auto-lock-toggle ${autoLocked ? 'locked' : ''}" title="자동전투 사용 잠금">${autoLocked ? 'LOCK' : 'AUTO'}</span>`);
       btn.title = sk.desc;
       btn.addEventListener('click', () => Battle.playerAction('skill', idx));
+      btn.querySelector('.auto-lock-toggle').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!Game.state.settings) Game.state.settings = {};
+        const locked = new Set(Game.state.settings.disabledAutoSkills || []);
+        if (locked.has(sk.id)) locked.delete(sk.id);
+        else locked.add(sk.id);
+        Game.state.settings.disabledAutoSkills = p.skills.map(skill => skill.id).filter(id => locked.has(id));
+        Game.save();
+        UI.toast(locked.has(sk.id) ? '자동전투에서 이 스킬을 사용하지 않습니다.' : '자동전투에서 이 스킬을 다시 사용합니다.');
+        UI.renderBattleActions();
+      });
       wrap.appendChild(btn);
     });
 
