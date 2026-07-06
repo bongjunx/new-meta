@@ -79,6 +79,11 @@ const AutoBattle = {
       return { kind: 'potion_hp', label: 'HP가 낮아 물약 사용' };
     }
 
+    // 스킬 사용 금지 설정: 기본 공격만 사용
+    if (Game.state.settings?.autoNoSkills) {
+      return { kind: 'attack', label: '기본 공격 (스킬 금지 모드)' };
+    }
+
     const skills = p.skills
       .map((skill, index) => ({ skill, index }))
       .filter(({ skill }) => this.canUseSkill(skill));

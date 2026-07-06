@@ -7,6 +7,7 @@ const UI = {
   forgeTarget: null, // 강화 대상 uid
   currentTab: 'village',
   lastMode: null,    // 마지막 전투 모드 (한 번 더 / 다음 층)
+  invFilter: 'all',  // 가방 부위 필터
 
   /* ══════════ 화면 전환 ══════════ */
   showScreen(name) {
@@ -160,7 +161,7 @@ const UI = {
           <div class="zone-banner" style="background:${z.banner}"></div>
           <div class="zone-name">${z.emoji} ${z.name} ${z.boss ? '👑' : ''}</div>
           <div class="zone-info">권장 레벨 ${z.levelRange[0]}~${z.levelRange[1]}<br>${z.desc}
-            ${z.reqRebirths ? `<br><span style="color:var(--exp)">요구: 환생 ${z.reqRebirths}회 · 장비 강화 합계 +${z.reqEnhSum}</span>` : ''}</div>
+            ${z.reqRebirths ? `<br><span style="color:var(--exp)">요구: 환생 ${z.reqRebirths}회 · 강화 합계 +${z.reqEnhSum}${z.reqRbPts ? ` · 환생P ${z.reqRbPts.toLocaleString()}` : ''}${z.reqAwakened ? ` · 각성 ${z.reqAwakened}개` : ''}</span>` : ''}</div>
           ${lockReqs ? `<div class="zone-lock">🔒</div><div class="zone-lock-reqs">${lockReqs.join(' · ')} 필요</div>` : ''}
         </div>`;
     }
@@ -256,9 +257,20 @@ const UI = {
         </select>
         <button id="btn-auto-start" class="btn ${AutoBattle.enabled ? 'btn-dark' : 'btn-gold'}">${AutoBattle.enabled ? '자동 전투 중지' : '자동 전투 시작'}</button>
       </div>
+      <label class="auto-option">
+        <input type="checkbox" id="auto-no-skills" ${Game.state.settings?.autoNoSkills ? 'checked' : ''}>
+        스킬 사용 금지 (기본 공격만 사용, MP 절약)
+      </label>
       <div class="panel-sub" id="auto-village-status">${AutoBattle.enabled ? (AutoBattle.lastStatus || '진행 중') : '대기 중'}</div>
     `;
     el.appendChild(panel);
+
+    panel.querySelector('#auto-no-skills').addEventListener('change', (e) => {
+      if (!Game.state.settings) Game.state.settings = {};
+      Game.state.settings.autoNoSkills = e.target.checked;
+      Game.save();
+      this.toast(e.target.checked ? '🚫 자동 전투에서 스킬을 사용하지 않습니다.' : '✨ 자동 전투에서 스킬을 사용합니다.');
+    });
 
     panel.querySelector('#btn-auto-start').addEventListener('click', () => {
       if (AutoBattle.enabled) {
@@ -525,6 +537,50 @@ const UI = {
     return { atk: '공격력', def: '방어력', hp: '최대 HP', mp: '최대 MP', critRate: '치명타 확률(%)', critDmg: '치명타 피해(%)' }[stat] || stat;
   },
 
+  /* ── 장비 비교 헬퍼 ── */
+  equippedItemFor(slot) {
+    const uid = Game.state.equipped[slot];
+    return uid != null ? Game.state.inventory.find(i => i.uid === uid) : null;
+  },
+
+  /* 목록 카드용: 장착 장비 대비 주스탯 증감 요약 태그 */
+  mainStatDiffTag(item) {
+    const eq = this.equippedItemFor(item.slot);
+    if (!eq || eq.uid === item.uid) return '';
+    const mine = Game.itemStats(item)[item.mainStat] || 0;
+    const cur = Game.itemStats(eq)[item.mainStat] || 0;
+    const d = mine - cur;
+    if (d > 0) return `<span class="diff-up">▲${d.toLocaleString()}</span>`;
+    if (d < 0) return `<span class="diff-down">▼${(-d).toLocaleString()}</span>`;
+    return '';
+  },
+
+  /* 모달용: 전체 스탯 비교 테이블 */
+  compareTableHtml(item) {
+    const eq = this.equippedItemFor(item.slot);
+    if (!eq) return `<div class="panel-sub" style="margin:10px 0 0">📌 이 부위(${item.typeName})에 장착 중인 장비가 없습니다 — 장착하면 모든 능력치가 그대로 적용됩니다.</div>`;
+    if (eq.uid === item.uid) return `<div class="panel-sub" style="margin:10px 0 0">📌 현재 장착 중인 장비입니다.</div>`;
+    const mine = Game.itemStats(item);
+    const cur = Game.itemStats(eq);
+    const keys = [...new Set([...Object.keys(cur), ...Object.keys(mine)])];
+    let rows = '';
+    for (const k of keys) {
+      const a = cur[k] || 0, b = mine[k] || 0, d = b - a;
+      const diff = d > 0 ? `<span class="diff-up">+${d.toLocaleString()}</span>`
+        : d < 0 ? `<span class="diff-down">${d.toLocaleString()}</span>`
+        : '<span class="diff-same">—</span>';
+      rows += `<tr><td>${this.statLabel(k)}</td><td>${a.toLocaleString()}</td><td>${b.toLocaleString()}</td><td>${diff}</td></tr>`;
+    }
+    return `
+      <div class="compare-wrap">
+        <div class="compare-title">⚖️ 장착 중인 <span class="rc-${eq.rarity}">${eq.enhance > 0 ? '+' + eq.enhance + ' ' : ''}${eq.name}</span> 와 비교</div>
+        <table class="compare-table">
+          <thead><tr><th>능력치</th><th>장착중</th><th>이 장비</th><th>차이</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  },
+
   renderInventory() {
     const el = document.getElementById('tab-inventory');
     const s = Game.state;
@@ -543,22 +599,47 @@ const UI = {
       <div class="panel-title">📦 소지품
         <span class="panel-sub" style="display:inline">— 🧪 HP 물약 ${s.potions.hp} · 🔮 MP 물약 ${s.potions.mp} · 💎 강화석 ${s.stones} · 📖 스킬의 서 ${s.tomes}</span>
       </div>
-      <div class="panel-sub">장비를 클릭하면 장착/판매할 수 있습니다. 일괄판매는 장착 중인 장비를 제외합니다.</div>
+      <div class="panel-sub">부위를 선택해 장착 중인 장비와 비교하세요. 장비를 클릭하면 상세 비교/장착/판매가 가능합니다.</div>
+      <div class="inv-filter-row">
+        <button class="btn btn-tiny inv-filter ${this.invFilter === 'all' ? 'btn-gold' : 'btn-dark'}" data-slot="all">전체</button>
+        ${DATA.equipTypes.map(t => `<button class="btn btn-tiny inv-filter ${this.invFilter === t.slot ? 'btn-gold' : 'btn-dark'}" data-slot="${t.slot}">${t.icon} ${t.name}</button>`).join('')}
+      </div>
       <div class="bulk-sell-row">
         <button class="btn btn-dark btn-tiny btn-bulk" data-max="1">고급 이하 일괄판매</button>
         <button class="btn btn-dark btn-tiny btn-bulk" data-max="2">희귀 이하 일괄판매</button>
         <button class="btn btn-danger btn-tiny btn-bulk" data-max="3">전설 미만 일괄판매</button>
-      </div>
-      <div class="inv-grid">`;
-    if (!s.inventory.length) html += `<div class="panel-sub">아직 획득한 장비가 없습니다. 사냥으로 장비를 모아보세요!</div>`;
-    for (const item of s.inventory) {
+      </div>`;
+
+    /* 부위별 비교 기준: 현재 장착 장비 표시 */
+    if (this.invFilter !== 'all') {
+      const equippedUid = s.equipped[this.invFilter];
+      const eqItem = equippedUid != null ? s.inventory.find(i => i.uid === equippedUid) : null;
+      html += `<div class="compare-base card ${eqItem ? 'bc-' + eqItem.rarity : ''}">
+        <div class="es-label">📌 현재 장착 (비교 기준)</div>
+        ${eqItem ? this.itemCardHtml(eqItem) : '<div class="item-opts">이 부위에 장착한 장비가 없습니다.</div>'}
+      </div>`;
+    }
+
+    html += `<div class="inv-grid">`;
+    const list = s.inventory
+      .filter(i => this.invFilter === 'all' || i.slot === this.invFilter)
+      .sort((a, b) => Game.rarityIndex(b.rarity) - Game.rarityIndex(a.rarity)
+        || b.enhance - a.enhance || b.mainValue - a.mainValue);
+    if (!list.length) html += `<div class="panel-sub">해당 부위의 장비가 없습니다. 사냥으로 장비를 모아보세요!</div>`;
+    for (const item of list) {
       const equipped = Object.values(s.equipped).includes(item.uid);
+      const diffTag = this.mainStatDiffTag(item);
       html += `<div class="card item-card bc-${item.rarity}" data-uid="${item.uid}">
-        ${this.itemCardHtml(item, equipped ? '<span class="equipped-tag">장착중</span>' : '')}
+        ${this.itemCardHtml(item, (equipped ? '<span class="equipped-tag">장착중</span>' : '') + diffTag)}
       </div>`;
     }
     html += `</div>`;
     el.innerHTML = html;
+
+    el.querySelectorAll('.inv-filter').forEach(b => b.addEventListener('click', () => {
+      this.invFilter = b.dataset.slot;
+      this.renderInventory();
+    }));
 
     el.querySelectorAll('.btn-unequip').forEach(b => b.addEventListener('click', e => {
       e.stopPropagation();
@@ -590,6 +671,7 @@ const UI = {
     box.innerHTML = `
       <h2 class="rc-${item.rarity}" style="font-size:17px">${item.icon} ${item.enhance > 0 ? '+' + item.enhance + ' ' : ''}[${item.rarityName}] ${item.name}</h2>
       <div style="font-size:12px">${this.itemCardHtml(item)}</div>
+      ${this.compareTableHtml(item)}
       <div class="modal-btns">
         ${equipped
           ? `<button class="btn btn-dark" id="mi-unequip">해제</button>`

@@ -70,8 +70,9 @@ const SAVE_TOP_KEYS = new Set([
   'skillPoints', 'passiveLevels', 'skillLevels', 'skillAwakened', 'materials', 'runes',
   'skillRunes', 'potions', 'inventory', 'equipped', 'nextUid', 'kills', 'deaths',
   'curHp', 'curMp', 'pets', 'activePet', 'rebirths', 'rebirthPts', 'bestFloor', 'pity',
-  'codex', 'achievementsClaimed', 'counters', 'daily', 'passives',
+  'codex', 'achievementsClaimed', 'counters', 'daily', 'passives', 'settings',
 ]);
+const SETTINGS_KEYS = new Set(['autoNoSkills']);
 const CLASS_IDS = new Set(['knight', 'rogue', 'merchant', 'mage', 'gladiator']);
 const EQUIP_SLOTS = new Set(['weapon', 'armor', 'helmet', 'gloves', 'accessory']);
 const RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legend']);
@@ -173,7 +174,7 @@ function validateSaveData(save) {
   if (!CLASS_IDS.has(save.classId)) return { ok: false, error: 'classId is invalid' };
 
   const integerChecks = [
-    ['level', 1, 500], ['exp', 0, 1000000000000], ['gold', 0, SAVE_LIMITS.maxCurrency],
+    ['level', 1, 1000], ['exp', 0, 1000000000000], ['gold', 0, SAVE_LIMITS.maxCurrency],
     ['stones', 0, SAVE_LIMITS.maxCurrency], ['gems', 0, SAVE_LIMITS.maxCurrency],
     ['tomes', 0, SAVE_LIMITS.maxCurrency], ['awakenStones', 0, SAVE_LIMITS.maxCurrency],
     ['skillPoints', 0, SAVE_LIMITS.maxCurrency], ['nextUid', 1, SAVE_LIMITS.maxCounter],
@@ -242,6 +243,13 @@ function validateSaveData(save) {
     if (err) return { ok: false, error: err };
   }
   if (save.daily !== undefined && !isPlainObject(save.daily)) return { ok: false, error: 'daily must be an object' };
+  if (save.settings !== undefined) {
+    if (!isPlainObject(save.settings)) return { ok: false, error: 'settings must be an object' };
+    for (const [key, value] of Object.entries(save.settings)) {
+      if (!SETTINGS_KEYS.has(key)) return { ok: false, error: `unknown settings field: ${key}` };
+      if (typeof value !== 'boolean') return { ok: false, error: `settings.${key} must be a boolean` };
+    }
+  }
 
   return { ok: true };
 }

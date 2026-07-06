@@ -57,6 +57,7 @@ const Game = {
       achievementsClaimed: [],
       counters: { gachaCount: 0, maxEnhance: 0, legendOwned: 0, suggestions: 0, dailyRuns: 0,
                   crafted: 0, combined: 0, runesFused: 0 },
+      settings: { autoNoSkills: false },
       daily: { date: '', loginClaimed: false, runs: {} },
     };
   },
@@ -829,6 +830,8 @@ const Game = {
     if (s.level < zone.reqLevel && s.rebirths === 0) reqs.push(`Lv.${zone.reqLevel}`);
     if ((zone.reqRebirths || 0) > s.rebirths) reqs.push(`환생 ${zone.reqRebirths}회`);
     if ((zone.reqEnhSum || 0) > this.equippedEnhanceSum()) reqs.push(`장비 강화 합계 +${zone.reqEnhSum}`);
+    if ((zone.reqRbPts || 0) > s.rebirthPts) reqs.push(`환생 포인트 ${zone.reqRbPts.toLocaleString()}`);
+    if ((zone.reqAwakened || 0) > Object.keys(s.skillAwakened || {}).length) reqs.push(`각성 스킬 ${zone.reqAwakened}개`);
     return reqs.length ? reqs : null;
   },
 

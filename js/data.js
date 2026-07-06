@@ -257,7 +257,24 @@ DATA.zones = [
     desc: '타락한 신들이 옥좌를 지키는 하늘 위의 신전.', reqRebirths: 7, reqEnhSum: 85, boss: true },
   { id: 'genesis',  name: '창세의 문',   emoji: '🌠', reqLevel: 450, levelRange: [450, 500],
     bg: 'zone-genesis', particle: 'pt-star', banner: 'linear-gradient(135deg,#2b1030,#8a3ad8,#ffd8ff)',
-    desc: '모든 것이 시작된 문. 창조주의 그림자가 최후의 시험을 내린다.', reqRebirths: 10, reqEnhSum: 100, boss: true },
+    desc: '모든 것이 시작된 문. 문 너머엔 종언으로 향하는 길이 있다.', reqRebirths: 10, reqEnhSum: 100, boss: true },
+  /* ── 종언 지역 (Lv.500~1000) — 환생 포인트 게이트 (장기 성장 구간) ──
+     reqRbPts: 필요 환생 포인트 누적치, reqAwakened: 필요 각성 스킬 수 */
+  { id: 'shatterway', name: '무너진 차원로', emoji: '🕳️', reqLevel: 500, levelRange: [500, 580],
+    bg: 'zone-shatterway', particle: 'pt-void', banner: 'linear-gradient(135deg,#10102b,#3d3d8a,#8a9aff)',
+    desc: '창세의 문 너머, 부서진 차원의 길.', reqRebirths: 25, reqEnhSum: 100, reqRbPts: 2000, boss: true },
+  { id: 'eternity', name: '영겁의 심연',   emoji: '⏳', reqLevel: 580, levelRange: [580, 670],
+    bg: 'zone-eternity', particle: 'pt-crystal', banner: 'linear-gradient(135deg,#0a2b24,#16b08a,#7affd8)',
+    desc: '시간이 고여 썩어가는 심연.', reqRebirths: 28, reqEnhSum: 100, reqRbPts: 5000, boss: true },
+  { id: 'godfall',  name: '신멸의 전장',   emoji: '🗡️', reqLevel: 670, levelRange: [670, 770],
+    bg: 'zone-godfall', particle: 'pt-ember', banner: 'linear-gradient(135deg,#2b0a0d,#b00d2b,#ff6b7a)',
+    desc: '신들이 스러져간 최후의 전장.', reqRebirths: 32, reqEnhSum: 100, reqRbPts: 12000, reqAwakened: 2, boss: true },
+  { id: 'infinity', name: '무한 회랑',     emoji: '♾️', reqLevel: 770, levelRange: [770, 880],
+    bg: 'zone-infinity', particle: 'pt-star', banner: 'linear-gradient(135deg,#2b2b3d,#8a8ab0,#e8e8ff)',
+    desc: '끝도 시작도 없는 뒤틀린 회랑.', reqRebirths: 38, reqEnhSum: 100, reqRbPts: 25000, reqAwakened: 4, boss: true },
+  { id: 'finale',   name: '종언의 옥좌',   emoji: '👑', reqLevel: 880, levelRange: [880, 1000],
+    bg: 'zone-finale', particle: 'pt-void', banner: 'linear-gradient(135deg,#14001f,#4a0d5e,#ff0d5e)',
+    desc: '모든 이야기가 끝나는 곳. 종언 그 자체가 옥좌에 앉아 있다.', reqRebirths: 45, reqEnhSum: 100, reqRbPts: 60000, reqAwakened: 4, boss: true },
 ];
 
 /* ── 몬스터 ──
@@ -384,6 +401,41 @@ DATA.monsters = {
     { id: 'eye_origin',  name: '태초의 관측자', kind: 'eyeball',  tint: '#ffe8ff', statMult: 3.55, skills: ['m_tackle', 'm_curse', 'm_poison'] },
     { id: 'core_creation', name: '창조의 결정', kind: 'core',     tint: '#d8c9ff', statMult: 3.7, skills: ['m_tackle', 'm_harden', 'm_slam'] },
     { id: 'dragon_creator', name: '창조주의 그림자', kind: 'dragon', tint: '#e83aff', statMult: 4.5, boss: true, scale: 1.7,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  shatterway: [
+    { id: 'core_shard',  name: '균열 파편',     kind: 'core',     tint: '#8a9aff', statMult: 3.8, skills: ['m_tackle', 'm_spit', 'm_curse'] },
+    { id: 'golem_collapse', name: '붕괴 골렘',  kind: 'golem',    tint: '#6b7aff', statMult: 3.9, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'bat_dimension', name: '차원 나방',   kind: 'bat',      tint: '#b0a0ff', statMult: 3.75, skills: ['m_tackle', 'm_bite', 'm_curse'] },
+    { id: 'dragon_shatter', name: '파쇄룡',     kind: 'dragon',   tint: '#5e6bff', statMult: 4.6, boss: true, scale: 1.6,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  eternity: [
+    { id: 'jelly_eon',   name: '영겁 해파리',   kind: 'jellyfish', tint: '#16d8b0', statMult: 3.95, skills: ['m_tackle', 'm_spit', 'm_poison'] },
+    { id: 'ghost_time',  name: '시간의 유령',   kind: 'ghost',    tint: '#7affd8', statMult: 3.9, skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'golem_hourglass', name: '모래시계 골렘', kind: 'golem', tint: '#3ab09a', statMult: 4.05, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'dragon_eon',  name: '영겁의 수호자', kind: 'dragon',   tint: '#0d9a7a', statMult: 4.8, boss: true, scale: 1.6,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  godfall: [
+    { id: 'imp_godslayer', name: '신살자 임프', kind: 'imp',      tint: '#ff3a3a', statMult: 4.1, skills: ['m_tackle', 'm_bite', 'm_burn'] },
+    { id: 'angel_fallen', name: '몰락한 천사',  kind: 'angel',    tint: '#d8d8e8', statMult: 4.15, skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'reaper_god',  name: '신들의 잔영',   kind: 'reaper',   tint: '#ffb0b0', statMult: 4.2, skills: ['m_tackle', 'm_curse', 'm_slam'] },
+    { id: 'dragon_godeater', name: '신을 삼킨 용', kind: 'dragon', tint: '#b00d2b', statMult: 5.0, boss: true, scale: 1.7,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  infinity: [
+    { id: 'eye_infinite', name: '무한의 눈',    kind: 'eyeball',  tint: '#f0f0f0', statMult: 4.3, skills: ['m_tackle', 'm_curse', 'm_burn'] },
+    { id: 'golem_corridor', name: '회랑의 감시자', kind: 'golem', tint: '#c9c9d8', statMult: 4.4, skills: ['m_tackle', 'm_harden', 'm_slam'] },
+    { id: 'reaper_endless', name: '끝없는 그림자', kind: 'reaper', tint: '#9a9ab0', statMult: 4.35, skills: ['m_tackle', 'm_curse', 'm_poison'] },
+    { id: 'kraken_mobius', name: '뫼비우스',    kind: 'kraken',   tint: '#e8e8ff', statMult: 5.2, boss: true, scale: 1.7,
+      skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
+  ],
+  finale: [
+    { id: 'reaper_finale', name: '종언의 사신', kind: 'reaper',   tint: '#4a2b5e', statMult: 4.6, skills: ['m_tackle', 'm_curse', 'm_burn', 'm_poison'] },
+    { id: 'angel_throne', name: '옥좌의 수호자', kind: 'angel',   tint: '#ffd8ff', statMult: 4.7, skills: ['m_tackle', 'm_curse', 'm_slam'] },
+    { id: 'star_last',   name: '최후의 별',     kind: 'star',     tint: '#ff0d5e', statMult: 4.65, skills: ['m_tackle', 'm_burn', 'm_curse'] },
+    { id: 'dragon_finale', name: '종언 그 자체', kind: 'dragon',  tint: '#3d0d2b', statMult: 5.8, boss: true, scale: 1.8,
       skills: ['m_tackle', 'm_burn', 'm_harden', 'm_slam'] },
   ],
   /* 모든 지역 공통 희귀 출현 (5%) */
@@ -647,9 +699,10 @@ DATA.achievements = [];
   [[1, '두 번째 삶', 100], [3, '윤회의 초월자', 300], [5, '다섯 번째 여정', 500], [10, '영겁의 순례자', 800], [20, '시간을 초월한 자', 1500]]
     .forEach(([n, name, r]) => add(`a_rebirth${n}`, '환생', name, '♻️', `환생 ${n}회`, s => s.rebirths >= n, r));
 
-  /* 레벨 (8) */
+  /* 레벨 (11) */
   [[40, '베테랑', 50], [80, '역전의 용사', 120], [120, '초인', 250], [160, '반신', 400], [200, '정점에 선 자', 800],
-   [300, '별을 넘은 자', 1200], [400, '신을 넘은 자', 1800], [500, '창세의 증인', 3000]]
+   [300, '별을 넘은 자', 1200], [400, '신을 넘은 자', 1800], [500, '창세의 증인', 3000],
+   [600, '경계를 부순 자', 4000], [800, '무한을 걷는 자', 6000], [1000, '종언을 본 자', 10000]]
     .forEach(([n, name, r]) => add(`a_lv${n}`, '성장', name, '🎖️', `레벨 ${n} 달성`, s => s.level >= n || (n <= 40 && s.rebirths > 0), r));
 
   /* 골드 (4) */
@@ -720,8 +773,14 @@ DATA.shopItems = [
   { id: 'tome',      name: '스킬의 서', icon: '📖', price: 150, currency: 'gems', desc: '액티브 스킬 강화에 필요한 고대의 책. 보스와 탑에서도 드랍된다.' },
 ];
 
-/* 레벨업 필요 경험치 */
-DATA.expForLevel = lv => Math.floor(28 * Math.pow(lv, 1.55));
+/* 레벨업 필요 경험치 — Lv.500 초과부터 급증 (종언 구간 장기 성장 설계)
+   Lv.500 이후 레벨링은 의도적으로 느리다: 환생을 반복하며
+   환생 포인트를 쌓는 것이 종언 지역 진입의 핵심 성장 축. */
+DATA.expForLevel = lv => {
+  let exp = 28 * Math.pow(lv, 1.55);
+  if (lv > 500) exp *= 1 + Math.pow((lv - 500) / 100, 2);
+  return Math.floor(exp);
+};
 
 /* ── 고레벨 스케일 곡선 (Lv.500 대응) ──
    저레벨(~30)에서는 거의 1, 고레벨에서 가파르게 상승.
